@@ -9,10 +9,10 @@ Mantener y mejorar el prototipo de optimización de hojas de ruta para mantenimi
 ## Reglas de colaboración
 
 1. GitHub es la fuente de verdad. No trabajar directamente sobre `main`.
-2. Antes de empezar, ejecutar `git checkout main` y `git pull origin main`.
+2. Trabajar en una copia local propia y con la cuenta GitHub de cada colaborador. Antes de empezar, preservar cambios pendientes, ejecutar `git checkout main` y `git pull --ff-only origin main`. Si no hay clon local, obtenerlo del repositorio oficial; no inicializar una historia independiente.
 3. Crear una rama por cambio: `tipo/descripcion-corta`, por ejemplo `feat/ponderacion-sla` o `fix/mapa-ruta`.
 4. No hacer `git push --force`, no borrar ramas ajenas y no sobrescribir cambios de terceros.
-5. Abrir un Pull Request para integrar todo cambio a `main`.
+5. Publicar la rama y abrir un Pull Request hacia `main`, compartir el enlace y esperar la aprobación de @Santim1897. Solo el responsable integra los cambios desde GitHub; los agentes no deben aprobar, integrar ni habilitar auto-merge por iniciativa propia.
 6. Mantener los commits pequeños, explicativos y vinculados a una única intención.
 
 ## Reglas técnicas
@@ -38,3 +38,9 @@ Mantener y mejorar el prototipo de optimización de hojas de ruta para mantenimi
 - Respetar cambios existentes de otros colaboradores.
 - Informar archivos modificados y validaciones realizadas al terminar.
 - Si falta una decisión de negocio —por ejemplo, cambiar pesos o criterios— pedir definición antes de inventar una política nueva.
+
+## Revisión obligatoria en GitHub
+
+`.github/CODEOWNERS` designa a @Santim1897 como responsable de todos los archivos. Para que su revisión sea obligatoria, ese archivo debe estar incorporado a `main` y GitHub debe tener activa una regla de protección que exija Pull Request y revisión de Code Owners. La documentación por sí sola no activa esa protección.
+
+Los cambios exclusivamente documentales o de metadatos de revisión pueden validarse revisando el diff, enlaces y sintaxis; las validaciones de ejecución anteriores son obligatorias cuando se modifica la aplicación, sus dependencias o su arranque. Informar siempre qué se ejecutó y qué quedó pendiente.
