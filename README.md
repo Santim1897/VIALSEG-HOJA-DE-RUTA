@@ -49,13 +49,16 @@ cd VIALSEG-HOJA-DE-RUTA
 
 ### Flujo obligatorio
 
-1. Actualizar la rama principal: `git checkout main` y `git pull origin main`.
+1. Actualizar la rama principal: `git checkout main` y `git pull --ff-only origin main`.
 2. Crear una rama descriptiva: `git checkout -b feat/mejora-ponderacion`.
 3. Hacer cambios y probarlos localmente.
 4. Confirmar solo los archivos necesarios: `git add app.py README.md`.
 5. Crear un commit claro: `git commit -m "Ajusta ponderación SLA"`.
 6. Publicar la rama: `git push -u origin feat/mejora-ponderacion`.
-7. Abrir un Pull Request hacia `main` y compartir su enlace para revisión y aprobación del responsable. No hacer cambios directos en `main` ni integrar el Pull Request sin su aprobación.
+7. Abrir un Pull Request hacia `main` con la cuenta del colaborador y compartir su enlace para revisión de @Santim1897. El responsable autoriza e incorpora los cambios desde GitHub.
+8. Después de la integración, cada persona actualiza su copia local con `git checkout main` y `git pull --ff-only origin main`, preservando antes cualquier trabajo pendiente.
+
+La guía completa está en [CONTRIBUTING.md](CONTRIBUTING.md). `.github/CODEOWNERS` identifica al responsable de todos los archivos; su aprobación solo queda impuesta técnicamente cuando ese archivo está en `main` y la protección de GitHub exige revisión de Code Owners.
 
 ## Archivos de colaboración
 
