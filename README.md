@@ -6,13 +6,15 @@ Prototipo para planificar recorridos de técnicos que realizan mantenimiento de 
 
 - Los radares, barrios y coordenadas son datos simulados.
 - Las coordenadas representan accesos aproximados; deben reemplazarse por el GPS real de cada equipo antes de operar.
-- La ruta usa una heurística de máxima ganancia. No sustituye una herramienta de navegación con tráfico real.
+- Las distancias, tiempos y línea del mapa se consultan en OSRM sobre la red vial de OpenStreetMap. No se usa distancia en línea recta ni velocidad fija de 30 km/h.
+- Los tiempos son estimaciones del perfil de conducción, **sin tráfico en vivo ni predicción por fecha/hora**. Cambiar la hora de inicio desplaza el itinerario, no cambia los tiempos de viaje.
 
 ## Ponderación actual
 
 ```text
 beneficio = severidad × factor_SLA × factor_comercial
 puntaje_de_ruta = beneficio × factor_cercanía
+utilidad_del_recorrido = suma(puntaje_de_ruta × (minutos_jornada − minuto_fin_atención) / minutos_jornada)
 ```
 
 | Criterio | Casos |
@@ -22,6 +24,22 @@ puntaje_de_ruta = beneficio × factor_cercanía
 | Valor comercial | ≤$300k = ×1,00 · $300–600k = ×1,05 · $600–900k = ×1,12 · >$900k = ×1,20 |
 | Cercanía | 0–5 km = ×1,20 · 5–15 km = ×1,00 · 15–30 km = ×0,80 · >30 km = ×0,60 |
 | Jornada | Traslado + 11 min por radar + regreso a base ≤ 480 min |
+
+La cercanía se mide en kilómetros por calles desde la parada anterior. Los factores existentes se mantienen; el orden de prioridad no es una secuencia obligatoria. La utilidad favorece resolver tickets importantes temprano y evita consumir la jornada en desvíos. Por ejemplo, permite 1 → 3 → 2 cuando 1 y 3 están juntos y 2 está lejos. Con los mismos tiempos y distancias, se atiende primero el mayor puntaje.
+
+Se comparan secuencias localmente, conservando hasta 128 candidatas por cantidad de paradas (búsqueda aproximada, sin garantía de óptimo global). A igual utilidad se elige menor duración total y luego menor distancia. Cada extensión debe permitir regresar a base. Los tramos se redondean hacia arriba a minutos y se suman 11 minutos por atención.
+
+## Servicio de caminos
+
+Por defecto se usa `https://router.project-osrm.org`, servidor público de demostración sin clave. Requiere internet; no ofrece disponibilidad garantizada ni es infraestructura de producción. Se realizan una consulta de tiempos/distancias entre puntos y otra del recorrido elegido, con caché en memoria de hasta aproximadamente 10 minutos y solicitudes espaciadas. Comparar alternativas localmente no genera una consulta por combinación.
+
+Para operar regularmente, configurar un servidor OSRM propio o contratado mediante la variable de entorno `OSRM_URL` antes de iniciar. El software OSRM es abierto; alojarlo puede tener costos. La consulta envía las coordenadas al proveedor configurado. No se activa ninguna suscripción ni facturación.
+
+No se inventan tiempos si falla el servicio: se muestra el error. Los pares sin camino se excluyen; si el recorrido final excede la jornada, se rechaza. La línea dibujada sigue la geometría del proveedor, incluyendo regreso a base. Los accesos simulados deben verificarse antes de uso operativo.
+
+Documentación: [OSRM API](https://project-osrm.org/docs/v5.24.0/api/).
+
+Pruebas sin red: `python -m unittest -v test_routing`. Incluyen el caso 1 → 3 → 2, prioridad con traslados iguales, retorno, caminos inexistentes y fallos del proveedor.
 
 ## Ejecutar localmente
 
