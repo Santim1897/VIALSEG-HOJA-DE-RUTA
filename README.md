@@ -40,7 +40,7 @@ py -m uvicorn app:app --reload
 
 ## Colaboración: GitHub como fuente única
 
-El repositorio **privado** oficial es [Santim1897/VIALSEG-HOJA-DE-RUTA](https://github.com/Santim1897/VIALSEG-HOJA-DE-RUTA). Cada integrante trabaja en su propia computadora, clona el mismo repositorio y usa su propia cuenta de GitHub y de Codex o Claude Code.
+El repositorio **privado** oficial es [Santim1897/VIALSEG-HOJA-DE-RUTA](https://github.com/Santim1897/VIALSEG-HOJA-DE-RUTA). Cada integrante trabaja en su propia computadora, clona el mismo repositorio y usa su propia cuenta de GitHub y de su herramienta de IA (Codex, Claude Code o Google Antigravity).
 
 ```powershell
 git clone https://github.com/Santim1897/VIALSEG-HOJA-DE-RUTA.git
@@ -65,5 +65,7 @@ La guía completa está en [CONTRIBUTING.md](CONTRIBUTING.md). `.github/CODEOWNE
 - `AGENTS.md`: reglas comunes para Codex, Claude Code y cualquier agente.
 - `CLAUDE.md`: punto de entrada para Claude Code; remite a las reglas compartidas.
 - `CONTRIBUTING.md`: proceso de ramas, commits y Pull Requests.
+- [ANTIGRAVITY.md](ANTIGRAVITY.md): preparación de Google Antigravity, autenticación GitHub sin GitHub Desktop, pruebas locales y creación de PR.
+- `.agents/rules/vialseg.md`: regla de workspace para Antigravity; activar Always On según la guía.
 
 Antes de solicitar cambios a un agente, indicar siempre el objetivo, el alcance y cómo validar el resultado. Por ejemplo: “Actualizá la ponderación SLA y verificá que la ruta siga regresando dentro de 480 minutos”.

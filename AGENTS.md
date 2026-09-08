@@ -1,6 +1,6 @@
 # Instrucciones compartidas del proyecto Vialseg
 
-Estas reglas aplican a cualquier persona o agente que modifique este repositorio, incluidos Codex y Claude Code.
+Estas reglas aplican a cualquier persona o agente que modifique este repositorio, incluidos Codex, Claude Code y Google Antigravity.
 
 ## Objetivo
 
