@@ -3,6 +3,7 @@ __pycache__/
 .venv/
 venv/
 .local-packages/
+.local/
 work/
 outputs/
 .env
