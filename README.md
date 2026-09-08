@@ -23,6 +23,16 @@ puntaje_de_ruta = beneficio × factor_cercanía
 | Cercanía | 0–5 km = ×1,20 · 5–15 km = ×1,00 · 15–30 km = ×0,80 · >30 km = ×0,60 |
 | Jornada | Traslado + 11 min por radar + regreso a base ≤ 480 min |
 
+`POST /api/route` acepta `max_minutes` como un entero JSON entre 60 y 480,
+inclusive; si se omite, usa 480. Ambos servidores rechazan con HTTP 422 los
+valores fuera de rango, decimales, cadenas, booleanos y `null`, sin redondearlos
+ni recortarlos. El límite incluye todos los traslados, la atención y el regreso
+a Martínez. Los errores de cálculo se muestran en pantalla.
+
+Para ejecutar las pruebas de jornada y de ambos servidores, con las dependencias
+instaladas: `py -m unittest discover -s tests -v`. Sin dependencias se prueban el
+algoritmo y el servidor integrado; las pruebas de FastAPI se marcan omitidas.
+
 ## Ejecutar localmente
 
 En Windows, hacer doble clic en `iniciar_local.cmd` y abrir:

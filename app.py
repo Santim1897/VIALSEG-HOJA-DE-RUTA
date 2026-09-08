@@ -48,6 +48,8 @@ app = FastAPI(title="Vialseg | Optimizador de Hojas de Ruta", version="0.1.0") i
 BASE = {"id": "BASE-MARTINEZ", "name": "Base operativa - Martinez", "lat": -34.4904, "lon": -58.5039}
 START_TIME = "08:00"
 WORKDAY_MINUTES = 8 * 60
+MIN_WORKDAY_MINUTES = 60
+WORKDAY_ERROR = "La jornada debe ser un número entero entre 60 y 480 minutos e incluir el regreso a base."
 SERVICE_MINUTES = 11  # dentro del rango operativo de 10 a 12 minutos
 AVERAGE_SPEED_KMH = 30
 
@@ -84,7 +86,7 @@ RADARS = [
 
 class RouteRequest(BaseModel):
     start_time: str = START_TIME
-    max_minutes: int = Field(WORKDAY_MINUTES, ge=60, le=720)
+    max_minutes: int = Field(WORKDAY_MINUTES, ge=MIN_WORKDAY_MINUTES, le=WORKDAY_MINUTES, strict=True)
     selected_ids: list[str] | None = None
 
 
@@ -122,7 +124,15 @@ def scoring(node: dict, km_from_current: float) -> dict:
     }
 
 
+def validate_workday(max_minutes: int) -> int:
+    """Regla compartida por ambos servidores y las llamadas directas al algoritmo."""
+    if type(max_minutes) is not int or not MIN_WORKDAY_MINUTES <= max_minutes <= WORKDAY_MINUTES:
+        raise HTTPException(422, detail=WORKDAY_ERROR)
+    return max_minutes
+
+
 def build_route(nodes: list[dict], start_time: str, max_minutes: int) -> dict:
+    validate_workday(max_minutes)
     try:
         current_time = datetime.strptime(start_time, "%H:%M")
     except ValueError as exc:
@@ -196,13 +206,30 @@ HTML = r'''<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name
 <title>Vialseg · Hoja de Ruta Técnica</title><script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>#map{height:460px}.num{background:#0f766e;color:white;border-radius:50%;width:25px;height:25px;display:grid;place-items:center;font-weight:bold}</style></head>
 <body class="bg-slate-100 text-slate-800"><main class="max-w-7xl mx-auto p-5 md:p-8"><header class="flex flex-wrap justify-between gap-4 mb-7"><div><p class="text-teal-700 font-bold tracking-widest text-xs">VIALSEG · OPERACIONES</p><h1 class="text-3xl font-bold">Optimizador de hoja de ruta</h1><p class="text-slate-500">Propuesta de Mejora 1 · Mantenimiento de cinemómetros</p></div><div class="bg-white rounded-xl shadow-sm px-5 py-3"><label class="text-xs font-semibold">INICIO DE JORNADA</label><input id="start" type="time" value="08:00" class="ml-2 border rounded px-2 py-1"><button onclick="loadRoute()" class="ml-3 bg-teal-700 hover:bg-teal-800 text-white font-semibold px-4 py-2 rounded-lg">Optimizar ruta</button></div></header>
+<p id="routeError" role="alert" hidden class="mb-5 rounded-lg bg-red-100 text-red-800 p-3"></p>
 <section class="grid md:grid-cols-4 gap-4 mb-5"><div class="bg-white p-4 rounded-xl shadow-sm"><p class="text-xs text-slate-500">PARADAS PLANIFICADAS</p><b id="stops" class="text-2xl">—</b></div><div class="bg-white p-4 rounded-xl shadow-sm"><p class="text-xs text-slate-500">RECORRIDO ESTIMADO</p><b id="km" class="text-2xl">—</b></div><div class="bg-white p-4 rounded-xl shadow-sm"><p class="text-xs text-slate-500">REGRESO A BASE</p><b id="return" class="text-2xl">—</b></div><div class="bg-white p-4 rounded-xl shadow-sm"><p class="text-xs text-slate-500">PUNTAJE OPERATIVO</p><b id="sla" class="text-2xl text-teal-700">—</b></div></section>
 <section class="bg-white rounded-xl shadow-sm overflow-hidden mb-5"><div id="map"></div><p class="p-3 text-xs text-slate-500">Estimación vial: Haversine × 1,22 · Velocidad urbana promedio 30 km/h · Atención por equipo: 11 min.</p></section>
 <section class="grid lg:grid-cols-3 gap-5"><div class="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden"><div class="p-4 border-b"><h2 class="font-bold">Itinerario secuenciado</h2><p class="text-xs text-slate-500">Puntaje = severidad × SLA × valor comercial × cercanía.</p></div><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50 text-left text-slate-500"><tr><th class="p-3">#</th><th class="p-3">Equipo / ubicación</th><th class="p-3">Severidad</th><th class="p-3">Puntaje</th><th class="p-3">Llegada</th><th class="p-3">Atención</th><th class="p-3">Salida</th><th class="p-3">Km</th></tr></thead><tbody id="table"></tbody></table></div><p id="unassigned" class="p-3 text-xs text-amber-700"></p></div>
 <aside class="bg-white rounded-xl shadow-sm p-5"><h2 class="font-bold">Checklist OT (mock)</h2><p class="text-sm text-slate-500 mb-4">Registrar atención técnica en sitio.</p><select id="radarSelect" class="w-full border rounded p-2 mb-3"></select><label class="block text-sm mb-2"><input type="checkbox"> Inspección visual</label><label class="block text-sm mb-2"><input type="checkbox"> Calibración verificada</label><label class="block text-sm mb-4"><input type="checkbox"> Evidencia fotográfica cargada</label><div class="text-center bg-slate-100 rounded-lg p-3"><span id="timer" class="font-mono text-3xl">00:00</span></div><button id="timerBtn" onclick="toggleTimer()" class="w-full mt-3 bg-slate-800 text-white p-2 rounded-lg">Iniciar atención</button></aside></section></main>
 <script>let map=L.map('map').setView([-34.58,-58.47],11), layers=[], seconds=0, ticking=false, interval;L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors'}).addTo(map);
 function clearMap(){layers.forEach(x=>map.removeLayer(x));layers=[]} function badge(p){return p==='Alto'?'bg-red-100 text-red-700':p==='Medio'?'bg-amber-100 text-amber-700':'bg-sky-100 text-sky-700'}
-async function loadRoute(){let r=await fetch('/api/route',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({start_time:document.querySelector('#start').value,max_minutes:480})});let d=await r.json();render(d)}
+async function loadRoute(){
+    let error=document.querySelector('#routeError');
+    error.hidden=true;
+    try{
+        let r=await fetch('/api/route',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({start_time:document.querySelector('#start').value,max_minutes:480})});
+        let d=await r.json();
+        if(!r.ok){
+            let detail=d.detail;
+            if(Array.isArray(detail)) detail=detail.map(x=>x.loc?.includes('max_minutes')?'La jornada debe ser un número entero entre 60 y 480 minutos e incluir el regreso a base.':x.msg).join(' ');
+            throw new Error(detail || 'No se pudo calcular la ruta.');
+        }
+        render(d);
+    }catch(e){
+        error.textContent='No se actualizó la ruta: '+e.message;
+        error.hidden=false;
+    }
+}
 function render(d){clearMap();let points=[[d.base.lat,d.base.lon]], base=L.marker(points[0]).bindPopup('<b>Base operativa</b><br>Martínez').addTo(map);layers.push(base);document.querySelector('#stops').textContent=d.stops.length;document.querySelector('#km').textContent=d.total_km+' km';document.querySelector('#return').textContent=d.return_time;document.querySelector('#sla').textContent=d.sla_value+' pts';let table='', select='<option value="">Seleccionar equipo…</option>';d.stops.forEach(s=>{points.push([s.lat,s.lon]);let marker=L.marker([s.lat,s.lon],{icon:L.divIcon({className:'',html:'<div class="num">'+s.stop+'</div>'})}).bindPopup('<b>'+s.id+'</b><br>'+s.name+'<br>Severidad: '+s.priority+'<br>Puntaje de ruta: '+s.route_score);layers.push(marker);marker.addTo(map);table+=`<tr class="border-t"><td class="p-3 font-bold">${s.stop}</td><td class="p-3"><b>${s.id}</b><br><span class="text-slate-500">${s.name}</span></td><td class="p-3"><span class="${badge(s.priority)} px-2 py-1 rounded-full text-xs font-bold">${s.priority}</span></td><td class="p-3 font-bold">${s.route_score}</td><td class="p-3">${s.arrival}</td><td class="p-3">${s.service_minutes} min</td><td class="p-3">${s.departure}</td><td class="p-3">${s.distance_km}</td></tr>`;select+=`<option value="${s.id}">${s.id} · ${s.name}</option>`});points.push([d.base.lat,d.base.lon]);let line=L.polyline(points,{color:'#0f766e',weight:4,opacity:.8}).addTo(map);layers.push(line);map.fitBounds(line.getBounds(),{padding:[30,30]});document.querySelector('#table').innerHTML=table;document.querySelector('#radarSelect').innerHTML=select;document.querySelector('#unassigned').textContent=d.unassigned.length?'Fuera de jornada: '+d.unassigned.map(x=>x.id).join(', '):'Todos los equipos seleccionados caben en la jornada.'}
 function toggleTimer(){ticking=!ticking;let b=document.querySelector('#timerBtn');b.textContent=ticking?'Pausar atención':'Reanudar atención';if(ticking){interval=setInterval(()=>{seconds++;let m=String(Math.floor(seconds/60)).padStart(2,'0'),s=String(seconds%60).padStart(2,'0');document.querySelector('#timer').textContent=m+':'+s},1000)}else clearInterval(interval)}loadRoute();</script></body></html>'''
 
@@ -239,12 +266,13 @@ class LocalHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             data = json.loads(self.rfile.read(length) or "{}")
+            max_minutes = validate_workday(data.get("max_minutes", WORKDAY_MINUTES))
             ids = data.get("selected_ids")
             nodes = [r for r in RADARS if ids is None or r["id"] in ids]
             if not nodes:
                 self._send_json({"detail": "No hay radares seleccionados"}, 400)
                 return
-            self._send_json(build_route(nodes, data.get("start_time", START_TIME), int(data.get("max_minutes", WORKDAY_MINUTES))))
+            self._send_json(build_route(nodes, data.get("start_time", START_TIME), max_minutes))
         except (ValueError, TypeError, HTTPException) as exc:
             self._send_json({"detail": getattr(exc, "detail", str(exc))}, 422)
 
