@@ -19,7 +19,7 @@ Mantener y mejorar el prototipo de optimización de hojas de ruta para mantenimi
 
 1. `app.py` contiene backend, algoritmo y visualización. Mantener el proyecto ejecutable localmente.
 2. La ruta debe salir y regresar a la base de Martínez en un máximo de 480 minutos.
-3. Cada radar atendido consume 11 minutos de servicio, además del viaje.
+3. Cada radar atendido consume 11 minutos de servicio, además del viaje y 15 minutos de ingreso por entrada al barrio. Programar los pendientes en jornadas sucesivas; no asignar fecha a una visita sin jornada viable.
 4. No modificar factores de ponderación, datos de prueba o restricciones sin actualizar `README.md`.
 5. Los datos de barrios y coordenadas son simulados: no presentarlos como ubicaciones operativas exactas.
 6. Evitar agregar dependencias de producción sin justificarlo en el Pull Request.
@@ -29,7 +29,7 @@ Mantener y mejorar el prototipo de optimización de hojas de ruta para mantenimi
 
 1. Iniciar la aplicación localmente con `iniciar_local.cmd` o `uvicorn app:app --reload`.
 2. Confirmar que `GET /api/radars` responde correctamente.
-3. Confirmar que `POST /api/route` devuelve una ruta válida que no supera 480 minutos.
+3. Confirmar que `POST /api/route` devuelve un plan con jornadas válidas que no superan 480 minutos y que `GET /api/plan` conserva la programación.
 4. Confirmar que el mapa muestra los marcadores, la línea de ruta y el itinerario.
 
 ## Forma de trabajar de los agentes

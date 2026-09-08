@@ -1,4 +1,7 @@
 import unittest
+import tempfile
+import json
+from pathlib import Path
 from unittest.mock import patch
 import app
 
@@ -23,10 +26,10 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(app.choose_order(nodes(), d, d, 480), [1, 2, 3])
 
     def test_return_and_unreachable_are_respected(self):
-        order = app.choose_order(nodes(), self.durations, self.distances, 60)
+        order = app.choose_order(nodes(), self.durations, self.distances, 70)
         self.assertEqual(order, [1, 3])
         self.durations[3][0] = None
-        order = app.choose_order(nodes(), self.durations, self.distances, 60)
+        order = app.choose_order(nodes(), self.durations, self.distances, 70)
         self.assertNotIn(3, order)
 
     def test_output_uses_provider_legs_and_service(self):
@@ -38,10 +41,12 @@ class RoutingTests(unittest.TestCase):
         with patch.object(app, 'road_matrix', return_value=(self.durations, self.distances)), patch.object(app, 'road_data', side_effect=mapped):
             result = app.build_route(nodes(), '08:00', 480)
         self.assertEqual([s['id'] for s in result['stops']], ['1', '3', '2'])
-        self.assertEqual(result['total_minutes'], 239)
-        self.assertEqual(result['return_time'], '11:59')
+        self.assertEqual(result['total_minutes'], 284)
+        self.assertEqual(result['return_time'], '12:44')
         self.assertEqual(result['total_km'], 206)
-        self.assertEqual(result['stops'][1]['arrival'], '08:17')
+        self.assertEqual(result['stops'][1]['arrival'], '08:32')
+        self.assertEqual(result['stops'][1]['service_start'], '08:47')
+        self.assertTrue(all(s['entry_minutes'] == 15 for s in result['stops']))
         self.assertFalse(result['live_traffic'])
         self.assertTrue(all(s['service_minutes'] == 11 for s in result['stops']))
 
@@ -67,6 +72,41 @@ class RoutingTests(unittest.TestCase):
         with patch.object(app, 'road_matrix', return_value=(self.durations, self.distances)), patch.object(app, 'road_data', return_value=mapped):
             with self.assertRaises(app.HTTPException):
                 app.build_route(nodes(), '08:00', 480)
+
+    def test_entry_once_for_continuous_neighborhood_visit(self):
+        a, b, c = nodes()
+        a['neighborhood_id'] = b['neighborhood_id'] = 'same'
+        c['neighborhood_id'] = 'other'
+        self.assertEqual(app.entry_minutes(app.BASE, a), 15)
+        self.assertEqual(app.entry_minutes(a, b), 0)
+        self.assertEqual(app.entry_minutes(b, c), 15)
+        self.assertEqual(app.entry_minutes(c, a), 15)
+
+    def test_deferred_visit_is_dated_and_saved(self):
+        # 26 min en sitio + 5 min por tramo: con 60 min cabe solo un equipo.
+        n = nodes()
+        matrix = [[0 if i == j else 300 for j in range(4)] for i in range(4)]
+        def mapped(service, points, options):
+            return {'routes': [{'legs': [{'duration': 300, 'distance': 1000}] * (len(points)-1),
+                                'geometry': {'coordinates': [[-58, -34], [-58.1, -34.1]]}}]}
+        with patch.object(app, 'road_matrix', return_value=(matrix, matrix)), patch.object(app, 'road_data', side_effect=mapped):
+            plan = app.build_plan(n, '08:00', 60, '2026-09-08')
+        self.assertEqual([d['date'] for d in plan['days']], ['2026-09-08', '2026-09-09', '2026-09-10'])
+        self.assertEqual(plan['deferred_count'], 2)
+        self.assertEqual(plan['unscheduled'], [])
+        visited = [s['id'] for d in plan['days'] for s in d['stops']]
+        self.assertEqual(len(set(visited)), 3)
+        self.assertTrue(all(d['total_minutes'] <= 60 for d in plan['days']))
+        with tempfile.TemporaryDirectory() as temp, patch.object(app, 'PLAN_FILE', Path(temp)/'plan.json'):
+            app.save_plan(plan)
+            self.assertEqual(app.saved_plan(), json.loads(json.dumps(plan)))
+
+    def test_impossible_visit_is_not_promised_tomorrow(self):
+        matrix = [[0, 36000], [36000, 0]]
+        with patch.object(app, 'road_matrix', return_value=(matrix, matrix)):
+            plan = app.build_plan(nodes()[:1], '08:00', 480, '2026-09-08')
+        self.assertEqual(plan['days'], [])
+        self.assertEqual(len(plan['unscheduled']), 1)
 
 
 if __name__ == '__main__':

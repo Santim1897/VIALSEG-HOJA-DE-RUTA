@@ -23,11 +23,22 @@ utilidad_del_recorrido = suma(puntaje_de_ruta × (minutos_jornada − minuto_fin
 | SLA / horas caído | 0–8 h = ×1,00 · 9–16 h = ×1,10 · 17–24 h = ×1,25 · >24 h = ×1,40 |
 | Valor comercial | ≤$300k = ×1,00 · $300–600k = ×1,05 · $600–900k = ×1,12 · >$900k = ×1,20 |
 | Cercanía | 0–5 km = ×1,20 · 5–15 km = ×1,00 · 15–30 km = ×0,80 · >30 km = ×0,60 |
-| Jornada | Traslado + 11 min por radar + regreso a base ≤ 480 min |
+| Ingreso al barrio | 15 min por entrada, antes del trabajo |
+| Jornada | Traslado + ingreso + 11 min por radar + regreso a base ≤ 480 min |
 
 La cercanía se mide en kilómetros por calles desde la parada anterior. Los factores existentes se mantienen; el orden de prioridad no es una secuencia obligatoria. La utilidad favorece resolver tickets importantes temprano y evita consumir la jornada en desvíos. Por ejemplo, permite 1 → 3 → 2 cuando 1 y 3 están juntos y 2 está lejos. Con los mismos tiempos y distancias, se atiende primero el mayor puntaje.
 
-Se comparan secuencias localmente, conservando hasta 128 candidatas por cantidad de paradas (búsqueda aproximada, sin garantía de óptimo global). A igual utilidad se elige menor duración total y luego menor distancia. Cada extensión debe permitir regresar a base. Los tramos se redondean hacia arriba a minutos y se suman 11 minutos por atención.
+Se comparan secuencias localmente, conservando hasta 128 candidatas por cantidad de paradas (búsqueda aproximada, sin garantía de óptimo global). A igual utilidad se elige menor duración total y luego menor distancia. Cada extensión debe permitir regresar a base. Los tramos se redondean hacia arriba a minutos, se suman 15 minutos de ingreso y 11 minutos por atención.
+
+## Ingreso y programación de días siguientes
+
+La llegada corresponde al acceso del barrio. El inicio del trabajo es 15 minutos después y la salida ocurre luego de otros 11 minutos. Se computa el ingreso tanto al elegir la secuencia como al construir los horarios definitivos. Si varios equipos comparten un `neighborhood_id`, solo se cobra un ingreso durante visitas consecutivas a ese barrio; salir y volver implica otro ingreso. Sin ese identificador, cada equipo representa un barrio independiente, como en los datos actuales.
+
+Elegir fecha y hora y pulsar **Optimizar ruta** crea y guarda un plan. Lo que no cabe se vuelve a optimizar para el día siguiente, siempre saliendo y regresando a la base dentro de 480 minutos. Se usan días calendario consecutivos, incluidos fines de semana, sin calendario de feriados. Los factores de prioridad se conservan y el SLA suma 24 horas por día de espera. La búsqueda es aproximada: un plan de varios días no demuestra que sea matemáticamente imposible otro plan de un día.
+
+El aviso muestra las visitas diferidas y el selector permite ver fecha, mapa e itinerario de cada jornada. Si un equipo no tiene camino viable o no cabe en una jornada, queda **sin fecha viable**, sin prometer una visita imposible. La programación se guarda en `.local/plan.json`, excluido de Git; persiste al reiniciar y actualizar el código. Optimizar otra vez reemplaza el plan local anterior solo si el cálculo completo termina correctamente. Recargar la página recupera el plan guardado, sin reprogramarlo. No se envían citas a calendarios externos ni avisos a proveedores; la planificación es interna y el checklist sigue siendo simulado.
+
+API: `POST /api/route` acepta `start_date` (AAAA-MM-DD), `start_time`, `max_minutes` y `selected_ids`; ahora devuelve un plan con `days`, `deferred_count` y `unscheduled` en lugar de una ruta única. Cada elemento de `days` conserva los campos de itinerario anteriores y agrega `date`, `entry_minutes` y `service_start` en las paradas. `GET /api/plan` recupera el último plan o devuelve `null` si no existe.
 
 ## Servicio de caminos
 
