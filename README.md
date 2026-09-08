@@ -33,6 +33,29 @@ Para ejecutar las pruebas de jornada y de ambos servidores, con las dependencias
 instaladas: `py -m unittest discover -s tests -v`. Sin dependencias se prueban el
 algoritmo y el servidor integrado; las pruebas de FastAPI se marcan omitidas.
 
+## Inspecciones pendientes y terminadas
+
+Elegir un equipo de la ruta en la checklist. Cada equipo conserva sus tres
+controles y su cronómetro de forma independiente. El tercer control completa
+la inspección automáticamente, detiene su tiempo y la mueve a **Terminados**,
+con equipo, fecha de finalización, tiempo registrado y controles realizados.
+Si no se inició el cronómetro, el historial indica «Sin cronómetro».
+
+Las inspecciones y los avances se guardan en `localStorage` de este navegador
+para esta dirección de la aplicación. Persisten al recargar, pero no se
+sincronizan entre dispositivos ni son una base de datos central. Borrar los
+datos del sitio elimina ese historial. Solo puede haber un cronómetro activo;
+iniciar otro pausa el anterior. El activo continúa contando al recargar.
+
+Completar una visita la retira del listado y selector de pendientes. El mapa
+y los indicadores conservan la ruta planificada; al volver a optimizar, los
+equipos terminados se excluyen. No hay todavía reapertura de inspecciones ni
+creación de nuevas órdenes para un equipo terminado. La casilla de evidencia
+registra una declaración: no carga fotografías.
+
+Pruebas de estado de inspecciones (Node.js, sin paquetes adicionales):
+`node tests/test_inspections.cjs`.
+
 ## Ejecutar localmente
 
 En Windows, hacer doble clic en `iniciar_local.cmd` y abrir:
