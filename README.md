@@ -111,7 +111,7 @@ clave localStorage anterior para conservar el historial del prototipo.
 Al optimizar nuevamente se excluyen los equipos terminados. Completar una
 visita no altera la geometría ni los horarios del plan original. Los datos de
 inspección persisten en el mismo navegador, no se sincronizan entre dispositivos
-y las casillas no suben fotografías. No hay todavía reapertura de órdenes.
+y la evidencia requiere adjuntar una imagen JPG, PNG o WebP válida de hasta 1 MB. La imagen se guarda localmente junto al historial; si el navegador no tiene espacio, la inspección no se finaliza. Los registros anteriores se conservan como declaraciones sin imagen. No hay todavía reapertura de órdenes.
 
 La API exige minutos enteros de al menos 60 antes de consultar el proveedor vial.
 Pruebas de inspecciones: `node tests/test_inspections.cjs`.

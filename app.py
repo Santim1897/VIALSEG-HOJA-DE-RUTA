@@ -432,8 +432,8 @@ aside>div:has(#timer){background:#f4f7f8;margin-top:20px;padding:18px}
 <div class="schedule-footer"><span id="workdayDuration" role="status" aria-live="polite"></span><button id="optimize" onclick="loadRoute()">Optimizar ruta <span aria-hidden="true">↗</span></button></div></section></header>
 <p id="routeStatus" role="status" class="mb-4 text-sm text-teal-800"></p><section id="planning" class="bg-white p-4 rounded-xl mb-4" hidden><h2 class="font-bold">Visitas programadas</h2><p id="planNotice" class="text-sm my-2"></p><label for="daySelect">Ver jornada: </label><select id="daySelect" onchange="showDay()" class="border rounded p-2"></select><p id="planPending" class="text-amber-800 text-sm mt-2"></p></section><section class="grid md:grid-cols-4 gap-4 mb-5"><div class="bg-white p-4 rounded-xl shadow-sm"><p class="text-xs text-slate-500">PARADAS PLANIFICADAS</p><b id="stops" class="text-2xl">—</b></div><div class="bg-white p-4 rounded-xl shadow-sm"><p class="text-xs text-slate-500">RECORRIDO ESTIMADO</p><b id="km" class="text-2xl">—</b></div><div class="bg-white p-4 rounded-xl shadow-sm"><p class="text-xs text-slate-500">REGRESO A BASE</p><b id="return" class="text-2xl">—</b></div><div class="bg-white p-4 rounded-xl shadow-sm"><p class="text-xs text-slate-500">PUNTAJE OPERATIVO</p><b id="sla" class="text-2xl text-teal-700">—</b></div></section>
 <section class="bg-white rounded-xl shadow-sm overflow-hidden mb-5"><div id="map"></div><p class="p-3 text-xs text-slate-500">Recorridos por calles: OSRM / OpenStreetMap. Tiempos estimados sin tráfico en vivo ni predicción por horario. Datos y accesos simulados · Ingreso: 15 min por barrio + atención: 11 min por equipo.</p></section>
-<section class="grid lg:grid-cols-3 gap-5"><div class="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden"><div class="p-4 border-b"><h2 class="font-bold">Inspecciones</h2><div class="flex gap-2 my-3" role="tablist" aria-label="Estado de inspecciones"><button id="pendingTab" role="tab" aria-selected="true" aria-controls="pendingPanel" onclick="showTab(false)" class="rounded-lg px-4 py-2 bg-teal-700 text-white">Pendientes</button><button id="doneTab" role="tab" aria-selected="false" aria-controls="donePanel" onclick="showTab(true)" class="rounded-lg px-4 py-2 bg-slate-100">Terminados</button></div><p class="text-xs text-slate-500">Puntaje = severidad × SLA × valor comercial × cercanía.</p></div><div id="pendingPanel" role="tabpanel" aria-labelledby="pendingTab"><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50 text-left text-slate-500"><tr><th class="p-3">#</th><th class="p-3">Equipo / ubicación</th><th class="p-3">Severidad</th><th class="p-3">Puntaje</th><th class="p-3">Traslado</th><th class="p-3">Llegada al acceso</th><th class="p-3">Ingreso</th><th class="p-3">Inicio trabajo</th><th class="p-3">Atención</th><th class="p-3">Salida</th><th class="p-3">Km</th></tr></thead><tbody id="table"></tbody></table></div><p id="unassigned" class="p-3 text-xs text-amber-700"></p></div><div id="donePanel" role="tabpanel" aria-labelledby="doneTab" hidden class="p-4"><p class="text-xs text-slate-500 mb-3">Historial guardado en este navegador. Las casillas registran la declaración del técnico; no adjuntan fotos.</p><div id="history"></div></div></div>
-<aside class="bg-white rounded-xl shadow-sm p-5"><h2 class="font-bold">Checklist de inspección</h2><p class="text-sm text-slate-500 mb-4">Al marcar los tres controles, la tarea pasa automáticamente a Terminados.</p><label for="radarSelect" class="text-sm font-semibold">Equipo pendiente</label><select id="radarSelect" onchange="selectInspection()" class="w-full border rounded p-2 mb-3"></select><fieldset id="checks" disabled><label class="block text-sm mb-2"><input id="checkVisual" type="checkbox" onchange="updateCheck(0,this.checked)"> Inspección visual</label><label class="block text-sm mb-2"><input id="checkCalibration" type="checkbox" onchange="updateCheck(1,this.checked)"> Calibración verificada</label><label class="block text-sm mb-4"><input id="checkPhoto" type="checkbox" onchange="updateCheck(2,this.checked)"> Evidencia fotográfica cargada</label></fieldset><div class="text-center bg-slate-100 rounded-lg p-3"><span id="timer" class="font-mono text-3xl">00:00</span></div><button id="timerBtn" disabled onclick="toggleTimer()" class="w-full mt-3 bg-slate-800 text-white p-2 rounded-lg disabled:opacity-40">Iniciar atención</button><p id="inspectionMessage" role="status" class="text-sm text-teal-800 mt-3"></p></aside></section></main>
+<section class="grid lg:grid-cols-3 gap-5"><div class="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden"><div class="p-4 border-b"><h2 class="font-bold">Inspecciones</h2><div class="flex gap-2 my-3" role="tablist" aria-label="Estado de inspecciones"><button id="pendingTab" role="tab" aria-selected="true" aria-controls="pendingPanel" onclick="showTab(false)" class="rounded-lg px-4 py-2 bg-teal-700 text-white">Pendientes</button><button id="doneTab" role="tab" aria-selected="false" aria-controls="donePanel" onclick="showTab(true)" class="rounded-lg px-4 py-2 bg-slate-100">Terminados</button></div><p class="text-xs text-slate-500">Puntaje = severidad × SLA × valor comercial × cercanía.</p></div><div id="pendingPanel" role="tabpanel" aria-labelledby="pendingTab"><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50 text-left text-slate-500"><tr><th class="p-3">#</th><th class="p-3">Equipo / ubicación</th><th class="p-3">Severidad</th><th class="p-3">Puntaje</th><th class="p-3">Traslado</th><th class="p-3">Llegada al acceso</th><th class="p-3">Ingreso</th><th class="p-3">Inicio trabajo</th><th class="p-3">Atención</th><th class="p-3">Salida</th><th class="p-3">Km</th></tr></thead><tbody id="table"></tbody></table></div><p id="unassigned" class="p-3 text-xs text-amber-700"></p></div><div id="donePanel" role="tabpanel" aria-labelledby="doneTab" hidden class="p-4"><p class="text-xs text-slate-500 mb-3">Historial guardado en este navegador. Las nuevas inspecciones incluyen una imagen de evidencia.</p><div id="history"></div></div></div>
+<aside class="bg-white rounded-xl shadow-sm p-5"><h2 class="font-bold">Checklist de inspección</h2><p class="text-sm text-slate-500 mb-4">Al marcar los tres controles, la tarea pasa automáticamente a Terminados.</p><label for="radarSelect" class="text-sm font-semibold">Equipo pendiente</label><select id="radarSelect" onchange="selectInspection()" class="w-full border rounded p-2 mb-3"></select><fieldset id="checks" disabled><label class="block text-sm mb-2"><input id="checkVisual" type="checkbox" onchange="updateCheck(0,this.checked)"> Inspección visual</label><label class="block text-sm mb-2"><input id="checkCalibration" type="checkbox" onchange="updateCheck(1,this.checked)"> Calibración verificada</label><label class="block text-sm mb-4"><input id="checkPhoto" type="checkbox" disabled> Imagen adjunta</label><input id="evidenceFile" type="file" accept="image/jpeg,image/png,image/webp" onchange="attachEvidence(this)" aria-label="Adjuntar imagen de evidencia"><p class="text-xs text-slate-500 my-2">JPG, PNG o WebP, hasta 1 MB. Se guarda en este navegador.</p><img id="evidencePreview" hidden alt="Evidencia adjunta" style="max-width:100%;max-height:180px;border-radius:8px"></fieldset><div class="text-center bg-slate-100 rounded-lg p-3"><span id="timer" class="font-mono text-3xl">00:00</span></div><button id="timerBtn" disabled onclick="toggleTimer()" class="w-full mt-3 bg-slate-800 text-white p-2 rounded-lg disabled:opacity-40">Iniciar atención</button><p id="inspectionMessage" role="status" class="text-sm text-teal-800 mt-3"></p></aside></section></main>
 <script>let map=L.map('map').setView([-34.58,-58.47],11), layers=[];L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors'}).addTo(map);
 function clearMap(){layers.forEach(x=>map.removeLayer(x));layers=[]} function badge(p){return p==='Alto'?'bg-red-100 text-red-700':p==='Medio'?'bg-amber-100 text-amber-700':'bg-sky-100 text-sky-700'}
 function displayDate(iso){return iso.split('-').reverse().join('/')}
@@ -531,7 +531,7 @@ function renderInspections(){
     }
     if(!pending.length)body.innerHTML='<tr><td colspan="11" class="p-4 text-slate-500">No hay inspecciones pendientes en esta ruta.</td></tr>';
     document.querySelector('#history').innerHTML=inspectionState.history.length?inspectionState.history.map(x=>
-        '<article class="border rounded-lg p-4 mb-3"><h3 class="font-bold">'+escapeText(x.radar_id)+' · '+escapeText(x.name)+'</h3><p class="text-sm text-slate-500">Finalizada: '+escapeText(new Date(x.completed_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}))+'</p><p class="text-sm">Tiempo registrado: '+(x.started_at?durationText(x.seconds):'Sin cronómetro')+'</p><p class="text-sm text-teal-700 mt-2">✓ Inspección visual · ✓ Calibración verificada · ✓ Evidencia fotográfica declarada</p></article>'
+        '<article class="border rounded-lg p-4 mb-3"><h3 class="font-bold">'+escapeText(x.radar_id)+' · '+escapeText(x.name)+'</h3><p class="text-sm text-slate-500">Finalizada: '+escapeText(new Date(x.completed_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}))+'</p><p class="text-sm">Tiempo registrado: '+(x.started_at?durationText(x.seconds):'Sin cronómetro')+'</p><p class="text-sm text-teal-700 mt-2">✓ Inspección visual · ✓ Calibración verificada · '+(hasEvidence(x)?'✓ Imagen adjunta':'Evidencia declarada anteriormente, sin imagen')+'</p>'+(hasEvidence(x)?'<img alt="Evidencia de inspección" style="max-width:100%;max-height:320px;margin-top:12px;border-radius:8px" src="'+x.evidence+'">':'')+'</article>'
     ).join(''):'<p class="text-slate-500">Todavía no hay inspecciones terminadas.</p>';
     selectInspection();
 }
@@ -539,22 +539,45 @@ function selectInspection(){
     const id=document.querySelector('#radarSelect').value,d=inspectionState.drafts[id];
     document.querySelector('#checks').disabled=!id || !storageReady;
     document.querySelector('#timerBtn').disabled=!id || !storageReady;
-    checkIds.forEach((key,i)=>document.getElementById(key).checked=Boolean(d?.checks[i]));
+    checkIds.forEach((key,i)=>document.getElementById(key).checked=i===2?hasEvidence(d):Boolean(d?.checks[i]));
+    document.querySelector('#checkPhoto').disabled=true;
+    const preview=document.querySelector('#evidencePreview');
+    preview.hidden=!hasEvidence(d);preview.src=hasEvidence(d)?d.evidence:'';
+    document.querySelector('#evidenceFile').value='';
     paintTimer();
 }
 function newDraft(){return {checks:[false,false,false],seconds:0,runningSince:null,started_at:null}}
-function updateCheck(index,checked){
+function hasEvidence(d){return typeof d?.evidence==='string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(d.evidence)}
+async function attachEvidence(input){
+    const id=document.querySelector('#radarSelect').value,file=input.files[0];
+    if(!id || !file || !storageReady)return;
+    try{
+        if(!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size>1024*1024)throw new Error('Elegí una imagen JPG, PNG o WebP de hasta 1 MB.');
+        const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error('No se pudo leer la imagen.'));reader.readAsDataURL(file)});
+        await new Promise((resolve,reject)=>{const img=new Image();img.onload=resolve;img.onerror=()=>reject(new Error('El archivo no contiene una imagen válida.'));img.src=data});
+        if(document.querySelector('#radarSelect').value!==id || isCompleted(id))return;
+        updateCheck(2,true,data);
+    }catch(e){document.querySelector('#inspectionMessage').textContent=e.message;input.value=''}
+}
+function updateCheck(index,checked,evidence=null){
     const id=document.querySelector('#radarSelect').value;
     if(!id || !storageReady || isCompleted(id))return;
     const next=JSON.parse(JSON.stringify(inspectionState)),d=next.drafts[id] || newDraft();
-    d.checks[index]=checked;next.drafts[id]=d;
+    if(index===2 && checked){
+        if(!hasEvidence({evidence})){selectInspection();document.querySelector('#inspectionMessage').textContent='Adjuntá una imagen para completar la evidencia.';return}
+        d.evidence=evidence;
+    }
+    d.checks[index]=checked;
+    d.checks[2]=hasEvidence(d);
+    next.drafts[id]=d;
     const completed=d.checks.every(Boolean);
     if(completed){
         const radar=radarCatalog.find(r=>r.id===id);
-        next.history.unshift({radar_id:id,name:radar.name,planned_date:routeData?.date || null,completed_at:new Date().toISOString(),started_at:d.started_at,seconds:elapsedSeconds(d),checks:[...d.checks]});
+        next.history.unshift({radar_id:id,name:radar.name,planned_date:routeData?.date || null,completed_at:new Date().toISOString(),started_at:d.started_at,seconds:elapsedSeconds(d),evidence:d.evidence,checks:[...d.checks]});
         delete next.drafts[id];
     }
     if(!saveState(next)){selectInspection();return}
+    selectInspection();
     if(completed){
         renderInspections();showTab(true);
         document.querySelector('#inspectionMessage').textContent=id+' finalizada y guardada en Terminados.';
