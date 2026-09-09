@@ -115,3 +115,16 @@ y las casillas no suben fotografías. No hay todavía reapertura de órdenes.
 
 La API exige minutos enteros de 60 a 480 antes de consultar el proveedor vial.
 Pruebas de inspecciones: `node tests/test_inspections.cjs`.
+
+## Inicio, fin y fechas
+
+La pantalla permite indicar inicio y fin de jornada y calcula su diferencia
+en minutos. Ambos horarios son del mismo día; se admite de 1 a 8 horas. Ese
+tiempo limita cada jornada incluyendo traslados, ingreso, atención y regreso.
+La API acepta `end_time`; cuando está presente, determina la duración a partir
+de `start_time`. Sin `end_time` conserva compatibilidad con `max_minutes`.
+Los planes guardan el fin y recuperan los horarios al recargar.
+
+Todas las fechas visibles usan DD/MM/AAAA, incluido el selector de jornadas
+y el historial. La API y el almacenamiento conservan AAAA-MM-DD para evitar
+ambigüedades. La entrada de fecha valida el formato y el día real del calendario.
