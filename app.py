@@ -425,6 +425,13 @@ aside>div:has(#timer){background:#f4f7f8;margin-top:20px;padding:18px}
 #history>div{border-color:var(--line);border-radius:12px;line-height:1.7}
 @media(max-width:767px){main>section.md\:grid-cols-4{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}main>section.md\:grid-cols-4>div{padding:18px}main>section.md\:grid-cols-4 b{font-size:24px}#planning{padding:20px}#daySelect{display:block;width:100%;margin-top:8px}#map{height:340px}}
 @media(max-width:359px){.schedule-fields{grid-template-columns:minmax(0,1fr)}.schedule-date{grid-column:auto}}
+#checks #evidenceFile{display:block;width:100%;min-width:0;height:auto;margin-top:14px;padding:6px;border:1px solid #cde3ea;border-radius:12px;background:#f2f9fc;color:var(--muted);font-family:inherit;font-size:12px;cursor:pointer;box-sizing:border-box}
+#evidenceFile::file-selector-button{min-height:42px;margin-right:10px;padding:10px 16px;border:0;border-radius:8px;background:var(--accent);color:white;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s}
+#evidenceFile:hover:not(:disabled)::file-selector-button{background:#055a77}
+#evidenceFile:focus-visible{outline:3px solid #00a5d550;outline-offset:3px}
+#evidenceFile:disabled{opacity:.5;cursor:not-allowed}
+#evidenceFile:disabled::file-selector-button{cursor:not-allowed}
+@media(prefers-reduced-motion:reduce){#evidenceFile::file-selector-button{transition:none}}
 </style></head>
 <body class="bg-slate-100 text-slate-800"><main class="max-w-7xl mx-auto p-5 md:p-8"><header class="page-header"><div class="page-heading"><p class="eyebrow">VIALSEG / OPERACIONES</p><h1>Tu jornada, organizada.</h1><p class="page-subtitle">Planificá las visitas y seguí cada inspección desde un solo lugar.</p></div>
 <section class="schedule-card" aria-labelledby="schedule-title"><div class="schedule-heading"><div><h2 id="schedule-title">Planificar jornada</h2><p>Elegí la fecha y tu horario de trabajo.</p></div><span class="schedule-tag">HOJA DE RUTA</span></div>
