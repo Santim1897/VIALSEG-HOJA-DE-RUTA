@@ -97,7 +97,7 @@ class RouteRequest(BaseModel):
     start_date: str | None = None
     start_time: str = START_TIME
     end_time: str | None = None
-    max_minutes: int = Field(WORKDAY_MINUTES, ge=60, le=WORKDAY_MINUTES, strict=True)
+    max_minutes: int = Field(WORKDAY_MINUTES, ge=60, strict=True)
     selected_ids: list[str] | None = None
 
 
@@ -208,8 +208,8 @@ def choose_order(nodes: list[dict], durations: list, distances: list, budget: in
 
 
 def build_route(nodes: list[dict], start_time: str, max_minutes: int, matrix=None) -> dict:
-    if isinstance(max_minutes, bool) or not isinstance(max_minutes, int) or not 60 <= max_minutes <= WORKDAY_MINUTES:
-        raise HTTPException(422, detail="La jornada debe estar entre 60 y 480 minutos")
+    if isinstance(max_minutes, bool) or not isinstance(max_minutes, int) or max_minutes < 60:
+        raise HTTPException(422, detail="La jornada debe estar al menos 60 minutos")
     try:
         current_time = datetime.strptime(start_time, "%H:%M")
     except (ValueError, TypeError) as exc:
@@ -273,15 +273,15 @@ def workday_duration(start_time: str, end_time: str | None, max_minutes: int) ->
     except (ValueError, TypeError) as exc:
         raise HTTPException(422, detail="Inicio y fin deben tener formato HH:MM") from exc
     minutes = int((end - start).total_seconds() // 60)
-    if not 60 <= minutes <= WORKDAY_MINUTES:
-        raise HTTPException(422, detail="El fin debe ser posterior al inicio y la jornada debe durar entre 60 y 480 minutos, dentro del mismo día.")
+    if minutes < 60:
+        raise HTTPException(422, detail="El fin debe ser posterior al inicio y la jornada debe durar al menos 60 minutos, dentro del mismo día.")
     return minutes
 
 
 def build_plan(nodes: list[dict], start_time: str, max_minutes: int, start_date: str | None = None, end_time: str | None = None) -> dict:
     max_minutes = workday_duration(start_time, end_time, max_minutes)
-    if type(max_minutes) is not int or not 60 <= max_minutes <= WORKDAY_MINUTES:
-        raise HTTPException(422, detail="La jornada debe ser un entero entre 60 y 480 minutos")
+    if type(max_minutes) is not int or max_minutes < 60:
+        raise HTTPException(422, detail="La jornada debe ser un entero al menos 60 minutos")
     try:
         day = date.fromisoformat(start_date) if start_date is not None else date.today()
     except (TypeError, ValueError) as exc:
@@ -450,7 +450,7 @@ function jornadaMinutes(){
  if(!start || !end)throw new Error('Completá inicio y fin de jornada.');
  const minutes=t=>Number(t.slice(0,2))*60+Number(t.slice(3));
  const total=minutes(end)-minutes(start);
- if(total<60 || total>480)throw new Error('El fin debe ser posterior al inicio; la jornada debe durar entre 1 y 8 horas dentro del mismo día.');
+ if(total<60)throw new Error('El fin debe ser posterior al inicio; la jornada debe durar al menos 1 hora dentro del mismo día.');
  return total;
 }
 function updateDuration(){try{const n=jornadaMinutes();document.querySelector('#workdayDuration').textContent='Duración: '+Math.floor(n/60)+' h '+(n%60)+' min'}catch(e){document.querySelector('#workdayDuration').textContent=e.message}}

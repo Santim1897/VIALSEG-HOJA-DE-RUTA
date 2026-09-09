@@ -1,6 +1,6 @@
 # Vialseg · Optimizador de Hojas de Ruta Técnica
 
-Prototipo para planificar recorridos de técnicos que realizan mantenimiento de cinemómetros en barrios privados de Pilar y Zona Norte. La aplicación prioriza incidentes por severidad, tiempo caído, valor comercial y cercanía, respetando una jornada de 8 horas con salida y regreso a la base de Martínez.
+Prototipo para planificar recorridos de técnicos que realizan mantenimiento de cinemómetros en barrios privados de Pilar y Zona Norte. La aplicación prioriza incidentes por severidad, tiempo caído, valor comercial y cercanía, respetando la duración de jornada configurada con salida y regreso a la base de Martínez.
 
 ## Estado del prototipo
 
@@ -24,7 +24,7 @@ utilidad_del_recorrido = suma(puntaje_de_ruta × (minutos_jornada − minuto_fin
 | Valor comercial | ≤$300k = ×1,00 · $300–600k = ×1,05 · $600–900k = ×1,12 · >$900k = ×1,20 |
 | Cercanía | 0–5 km = ×1,20 · 5–15 km = ×1,00 · 15–30 km = ×0,80 · >30 km = ×0,60 |
 | Ingreso al barrio | 15 min por entrada, antes del trabajo |
-| Jornada | Traslado + ingreso + 11 min por radar + regreso a base ≤ 480 min |
+| Jornada | Traslado + ingreso + 11 min por radar + regreso a base ≤ duración configurada |
 
 La cercanía se mide en kilómetros por calles desde la parada anterior. Los factores existentes se mantienen; el orden de prioridad no es una secuencia obligatoria. La utilidad favorece resolver tickets importantes temprano y evita consumir la jornada en desvíos. Por ejemplo, permite 1 → 3 → 2 cuando 1 y 3 están juntos y 2 está lejos. Con los mismos tiempos y distancias, se atiende primero el mayor puntaje.
 
@@ -34,7 +34,7 @@ Se comparan secuencias localmente, conservando hasta 128 candidatas por cantidad
 
 La llegada corresponde al acceso del barrio. El inicio del trabajo es 15 minutos después y la salida ocurre luego de otros 11 minutos. Se computa el ingreso tanto al elegir la secuencia como al construir los horarios definitivos. Si varios equipos comparten un `neighborhood_id`, solo se cobra un ingreso durante visitas consecutivas a ese barrio; salir y volver implica otro ingreso. Sin ese identificador, cada equipo representa un barrio independiente, como en los datos actuales.
 
-Elegir fecha y hora y pulsar **Optimizar ruta** crea y guarda un plan. Lo que no cabe se vuelve a optimizar para el día siguiente, siempre saliendo y regresando a la base dentro de 480 minutos. Se usan días calendario consecutivos, incluidos fines de semana, sin calendario de feriados. Los factores de prioridad se conservan y el SLA suma 24 horas por día de espera. La búsqueda es aproximada: un plan de varios días no demuestra que sea matemáticamente imposible otro plan de un día.
+Elegir fecha y hora y pulsar **Optimizar ruta** crea y guarda un plan. Lo que no cabe se vuelve a optimizar para el día siguiente, siempre saliendo y regresando a la base dentro de la duración configurada. Se usan días calendario consecutivos, incluidos fines de semana, sin calendario de feriados. Los factores de prioridad se conservan y el SLA suma 24 horas por día de espera. La búsqueda es aproximada: un plan de varios días no demuestra que sea matemáticamente imposible otro plan de un día.
 
 El aviso muestra las visitas diferidas y el selector permite ver fecha, mapa e itinerario de cada jornada. Si un equipo no tiene camino viable o no cabe en una jornada, queda **sin fecha viable**, sin prometer una visita imposible. La programación se guarda en `.local/plan.json`, excluido de Git; persiste al reiniciar y actualizar el código. Optimizar otra vez reemplaza el plan local anterior solo si el cálculo completo termina correctamente. Recargar la página recupera el plan guardado, sin reprogramarlo. No se envían citas a calendarios externos ni avisos a proveedores; la planificación es interna y el checklist permite completar inspecciones en este navegador.
 
@@ -97,7 +97,7 @@ La guía completa está en [CONTRIBUTING.md](CONTRIBUTING.md). `.github/CODEOWNE
 - [ANTIGRAVITY.md](ANTIGRAVITY.md): preparación de Google Antigravity, autenticación GitHub sin GitHub Desktop, pruebas locales y creación de PR.
 - `.agents/rules/vialseg.md`: regla de workspace para Antigravity; activar Always On según la guía.
 
-Antes de solicitar cambios a un agente, indicar siempre el objetivo, el alcance y cómo validar el resultado. Por ejemplo: “Actualizá la ponderación SLA y verificá que la ruta siga regresando dentro de 480 minutos”.
+Antes de solicitar cambios a un agente, indicar siempre el objetivo, el alcance y cómo validar el resultado. Por ejemplo: “Actualizá la ponderación SLA y verificá que la ruta siga regresando dentro de la duración configurada”.
 
 ## Integración de inspecciones y jornadas
 
@@ -113,13 +113,13 @@ visita no altera la geometría ni los horarios del plan original. Los datos de
 inspección persisten en el mismo navegador, no se sincronizan entre dispositivos
 y las casillas no suben fotografías. No hay todavía reapertura de órdenes.
 
-La API exige minutos enteros de 60 a 480 antes de consultar el proveedor vial.
+La API exige minutos enteros de al menos 60 antes de consultar el proveedor vial.
 Pruebas de inspecciones: `node tests/test_inspections.cjs`.
 
 ## Inicio, fin y fechas
 
 La pantalla permite indicar inicio y fin de jornada y calcula su diferencia
-en minutos. Ambos horarios son del mismo día; se admite de 1 a 8 horas. Ese
+en minutos. Ambos horarios son del mismo día; se admite un mínimo de 1 hora, sin tope de 8 horas. Ese
 tiempo limita cada jornada incluyendo traslados, ingreso, atención y regreso.
 La API acepta `end_time`; cuando está presente, determina la duración a partir
 de `start_time`. Sin `end_time` conserva compatibilidad con `max_minutes`.
