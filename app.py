@@ -375,6 +375,56 @@ body{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!im
 @media(min-width:1100px){.page-header{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);align-items:center;gap:40px}}
 @media(max-width:599px){.schedule-card{padding:20px}.schedule-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 12px}.schedule-date{grid-column:1/-1}.schedule-heading{margin-bottom:20px}.schedule-tag{display:none}.schedule-footer{align-items:stretch;flex-direction:column;gap:12px}#optimize{width:100%}.page-header{gap:22px}.page-subtitle{font-size:13px}}
 @media(prefers-reduced-motion:reduce){.schedule-field input,#optimize{transition:none}}
+/* Vialseg identity: sky blue and lime, with quiet operational surfaces. */
+:root{--ink:#202b30;--muted:#66747b;--accent:#086f91;--line:#e1e7ea;--sky:#00a5d5;--lime:#83c735}
+body{background:#f6f8f9!important;color:var(--ink)!important}
+body:before{content:"";display:block;height:4px;background:linear-gradient(90deg,var(--sky),var(--lime))}
+main{max-width:1440px!important}
+.eyebrow{color:var(--accent);letter-spacing:.14em}
+.page-heading h1{max-width:440px}.page-header{margin-bottom:28px}
+.schedule-card{box-shadow:0 6px 24px #20334304;border-radius:20px}
+.schedule-field input{background:#f8fafb;border-color:var(--line)}
+.schedule-field input:focus{box-shadow:0 0 0 3px #00a5d51a}
+#optimize{background:var(--accent);box-shadow:0 2px 4px #086f9114}
+#optimize:hover{background:#055a77}#optimize:focus-visible{outline-color:#00a5d560}
+#routeStatus{color:var(--accent);line-height:1.6}#routeStatus:empty{display:none}
+#planning{padding:24px;border:1px solid var(--line);border-radius:18px;margin-bottom:20px;background:linear-gradient(115deg,#fff 60%,#f3f9ed)}
+#planning h2,aside h2{font-size:17px;letter-spacing:-.025em;font-weight:600}
+#planNotice{color:var(--muted);line-height:1.6;margin:8px 0 16px}
+#planning label{font-size:13px;font-weight:600;margin-right:10px}
+select{min-height:44px;max-width:100%;border:1px solid var(--line)!important;border-radius:9px!important;background:#fff;font:inherit;font-size:13px;padding:10px 32px 10px 12px!important;color:var(--ink)}
+select:focus-visible,button:focus-visible,input[type=checkbox]:focus-visible{outline:3px solid #00a5d550;outline-offset:3px}
+main>section.grid{min-width:0}
+main>section.grid>div,main>section.grid>aside{min-width:0;border:1px solid var(--line);box-shadow:0 2px 8px #20334303;border-radius:16px}
+main>section.md\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+main>section.md\:grid-cols-4>div{padding:22px 24px}
+main>section.md\:grid-cols-4 p{font-size:10px;font-weight:600;letter-spacing:.08em;line-height:1.6;margin-bottom:12px}
+main>section.md\:grid-cols-4 b{font-size:28px;font-weight:600;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+#sla{color:var(--accent)}
+main>section:has(>#map){border:1px solid var(--line);border-radius:18px;box-shadow:none}
+#map{height:420px;background:#eaf0f2}
+.num{background:var(--accent);border:2px solid white;box-shadow:0 2px 6px #20334333;width:29px;height:29px;font-size:12px}
+main>section:has(>#map)>p{padding:14px 20px;line-height:1.7;background:white}
+[role=tablist]{display:inline-flex;gap:4px;padding:4px;background:#f0f3f5;border-radius:10px}
+[role=tab]{border-radius:7px!important;font-size:13px;font-weight:600;min-height:40px;background:transparent!important;color:var(--muted)!important}
+[role=tab][aria-selected=true]{background:white!important;color:var(--accent)!important;box-shadow:0 1px 4px #20334316}
+[role=tabpanel] table{font-size:12px;font-variant-numeric:tabular-nums}
+thead{background:#f8fafb!important}th{font-weight:500;white-space:nowrap}td{border-color:var(--line);vertical-align:middle}
+tbody tr:hover{background:#f5fafc}td:nth-child(2){min-width:180px}td b{font-weight:600}
+aside{align-self:start;padding:24px!important}aside>p{line-height:1.65;margin-top:8px}
+#radarSelect{margin-top:8px;margin-bottom:18px}
+#checks label{display:flex;align-items:center;gap:10px;min-height:48px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fafbfc;cursor:pointer}
+#checks label:has(:checked){background:#f2f8eb;border-color:#cee2b8}
+#checks input{width:17px;height:17px;flex-shrink:0;accent-color:#527f22}
+#checks:disabled label{opacity:.55;cursor:default}
+aside>div:has(#timer){background:#f4f7f8;margin-top:20px;padding:18px}
+#timer{color:var(--ink);font-size:32px;letter-spacing:.04em}
+#timerBtn{min-height:46px;background:var(--accent);font-size:13px;font-weight:600;border-radius:9px}
+#timerBtn:hover:not(:disabled){background:#055a77}
+#inspectionMessage{color:var(--accent);font-size:12px;line-height:1.6}
+#history>div{border-color:var(--line);border-radius:12px;line-height:1.7}
+@media(max-width:767px){main>section.md\:grid-cols-4{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}main>section.md\:grid-cols-4>div{padding:18px}main>section.md\:grid-cols-4 b{font-size:24px}#planning{padding:20px}#daySelect{display:block;width:100%;margin-top:8px}#map{height:340px}}
+@media(max-width:359px){.schedule-fields{grid-template-columns:minmax(0,1fr)}.schedule-date{grid-column:auto}}
 </style></head>
 <body class="bg-slate-100 text-slate-800"><main class="max-w-7xl mx-auto p-5 md:p-8"><header class="page-header"><div class="page-heading"><p class="eyebrow">VIALSEG / OPERACIONES</p><h1>Tu jornada, organizada.</h1><p class="page-subtitle">Planificá las visitas y seguí cada inspección desde un solo lugar.</p></div>
 <section class="schedule-card" aria-labelledby="schedule-title"><div class="schedule-heading"><div><h2 id="schedule-title">Planificar jornada</h2><p>Elegí la fecha y tu horario de trabajo.</p></div><span class="schedule-tag">HOJA DE RUTA</span></div>
@@ -434,7 +484,7 @@ async function restorePlan(){
  catch(e){document.querySelector('#routeStatus').textContent='No se pudo recuperar el plan guardado.'}
 }
 
-function render(d){routeData=d;clearMap();let points=[[d.base.lat,d.base.lon]], base=L.marker(points[0]).bindPopup('<b>Base operativa</b><br>Martínez').addTo(map);layers.push(base);document.querySelector('#stops').textContent=d.stops.length;document.querySelector('#km').textContent=d.total_km+' km';document.querySelector('#return').textContent=d.return_time;document.querySelector('#sla').textContent=d.sla_value+' pts';let table='', select='<option value="">Seleccionar equipo…</option>';d.stops.forEach(s=>{points.push([s.lat,s.lon]);let marker=L.marker([s.lat,s.lon],{icon:L.divIcon({className:'',html:'<div class="num">'+s.stop+'</div>'})}).bindPopup('<b>'+s.id+'</b><br>'+s.name+'<br>Severidad: '+s.priority+'<br>Puntaje de ruta: '+s.route_score);layers.push(marker);marker.addTo(map);table+=`<tr class="border-t"><td class="p-3 font-bold">${s.stop}</td><td class="p-3"><b>${s.id}</b><br><span class="text-slate-500">${s.name}</span></td><td class="p-3"><span class="${badge(s.priority)} px-2 py-1 rounded-full text-xs font-bold">${s.priority}</span></td><td class="p-3 font-bold">${s.route_score}</td><td class="p-3">${s.travel_minutes} min</td><td class="p-3">${s.arrival}</td><td class="p-3">${s.entry_minutes} min</td><td class="p-3">${s.service_start}</td><td class="p-3">${s.service_minutes} min</td><td class="p-3">${s.departure}</td><td class="p-3">${s.distance_km}</td></tr>`;select+=`<option value="${s.id}">${s.id} · ${s.name}</option>`});points.push([d.base.lat,d.base.lon]);let line=L.polyline(d.geometry.length?d.geometry.map(p=>[p[1],p[0]]):[points[0]],{color:'#0f766e',weight:4,opacity:.8}).addTo(map);layers.push(line);map.fitBounds(line.getBounds(),{padding:[30,30]});document.querySelector('#table').innerHTML=table;document.querySelector('#radarSelect').innerHTML=select;document.querySelector('#unassigned').textContent=d.unassigned.length?'No incluidos por jornada o falta de camino: '+d.unassigned.map(x=>x.id).join(', '):'Todos los equipos seleccionados caben en la jornada.';renderInspections()}
+function render(d){routeData=d;clearMap();let points=[[d.base.lat,d.base.lon]], base=L.marker(points[0]).bindPopup('<b>Base operativa</b><br>Martínez').addTo(map);layers.push(base);document.querySelector('#stops').textContent=d.stops.length;document.querySelector('#km').textContent=d.total_km+' km';document.querySelector('#return').textContent=d.return_time;document.querySelector('#sla').textContent=d.sla_value+' pts';let table='', select='<option value="">Seleccionar equipo…</option>';d.stops.forEach(s=>{points.push([s.lat,s.lon]);let marker=L.marker([s.lat,s.lon],{icon:L.divIcon({className:'',html:'<div class="num">'+s.stop+'</div>'})}).bindPopup('<b>'+s.id+'</b><br>'+s.name+'<br>Severidad: '+s.priority+'<br>Puntaje de ruta: '+s.route_score);layers.push(marker);marker.addTo(map);table+=`<tr class="border-t"><td class="p-3 font-bold">${s.stop}</td><td class="p-3"><b>${s.id}</b><br><span class="text-slate-500">${s.name}</span></td><td class="p-3"><span class="${badge(s.priority)} px-2 py-1 rounded-full text-xs font-bold">${s.priority}</span></td><td class="p-3 font-bold">${s.route_score}</td><td class="p-3">${s.travel_minutes} min</td><td class="p-3">${s.arrival}</td><td class="p-3">${s.entry_minutes} min</td><td class="p-3">${s.service_start}</td><td class="p-3">${s.service_minutes} min</td><td class="p-3">${s.departure}</td><td class="p-3">${s.distance_km}</td></tr>`;select+=`<option value="${s.id}">${s.id} · ${s.name}</option>`});points.push([d.base.lat,d.base.lon]);let line=L.polyline(d.geometry.length?d.geometry.map(p=>[p[1],p[0]]):[points[0]],{color:'#086f91',weight:4,opacity:.8}).addTo(map);layers.push(line);map.fitBounds(line.getBounds(),{padding:[30,30]});document.querySelector('#table').innerHTML=table;document.querySelector('#radarSelect').innerHTML=select;document.querySelector('#unassigned').textContent=d.unassigned.length?'No incluidos por jornada o falta de camino: '+d.unassigned.map(x=>x.id).join(', '):'Todos los equipos seleccionados caben en la jornada.';renderInspections()}
 const INSPECTION_KEY='vialseg.inspections.v1';
 let inspectionState={drafts:{},history:[]}, routeData=null, radarCatalog=[], catalogBase=null, storageReady=true;
 const checkIds=['checkVisual','checkCalibration','checkPhoto'];
