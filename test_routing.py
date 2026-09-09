@@ -12,6 +12,16 @@ def nodes():
 
 
 class RoutingTests(unittest.TestCase):
+    def test_workday_from_start_and_end(self):
+        self.assertEqual(app.workday_duration('08:00', '14:00', 480), 360)
+        self.assertEqual(app.workday_duration('09:15', '16:45', 480), 450)
+        self.assertEqual(app.workday_duration('08:00', None, 480), 480)
+        for end in ('08:00', '07:00', '08:30', '17:00', '25:00'):
+            with self.subTest(end=end), patch.object(app, 'road_matrix') as provider:
+                with self.assertRaises(app.HTTPException):
+                    app.build_plan(nodes(), '08:00', 480, '2026-09-09', end)
+                provider.assert_not_called()
+
     def setUp(self):
         # Base, 1 y 3 cercanos; 2 lejos. Tiempos dirigidos, en segundos.
         self.minutes = [[0, 5, 100, 6], [5, 0, 100, 1], [100, 100, 0, 100], [6, 1, 100, 0]]

@@ -36,7 +36,7 @@ La llegada corresponde al acceso del barrio. El inicio del trabajo es 15 minutos
 
 Elegir fecha y hora y pulsar **Optimizar ruta** crea y guarda un plan. Lo que no cabe se vuelve a optimizar para el día siguiente, siempre saliendo y regresando a la base dentro de 480 minutos. Se usan días calendario consecutivos, incluidos fines de semana, sin calendario de feriados. Los factores de prioridad se conservan y el SLA suma 24 horas por día de espera. La búsqueda es aproximada: un plan de varios días no demuestra que sea matemáticamente imposible otro plan de un día.
 
-El aviso muestra las visitas diferidas y el selector permite ver fecha, mapa e itinerario de cada jornada. Si un equipo no tiene camino viable o no cabe en una jornada, queda **sin fecha viable**, sin prometer una visita imposible. La programación se guarda en `.local/plan.json`, excluido de Git; persiste al reiniciar y actualizar el código. Optimizar otra vez reemplaza el plan local anterior solo si el cálculo completo termina correctamente. Recargar la página recupera el plan guardado, sin reprogramarlo. No se envían citas a calendarios externos ni avisos a proveedores; la planificación es interna y el checklist sigue siendo simulado.
+El aviso muestra las visitas diferidas y el selector permite ver fecha, mapa e itinerario de cada jornada. Si un equipo no tiene camino viable o no cabe en una jornada, queda **sin fecha viable**, sin prometer una visita imposible. La programación se guarda en `.local/plan.json`, excluido de Git; persiste al reiniciar y actualizar el código. Optimizar otra vez reemplaza el plan local anterior solo si el cálculo completo termina correctamente. Recargar la página recupera el plan guardado, sin reprogramarlo. No se envían citas a calendarios externos ni avisos a proveedores; la planificación es interna y el checklist permite completar inspecciones en este navegador.
 
 API: `POST /api/route` acepta `start_date` (AAAA-MM-DD), `start_time`, `max_minutes` y `selected_ids`; ahora devuelve un plan con `days`, `deferred_count` y `unscheduled` en lugar de una ruta única. Cada elemento de `days` conserva los campos de itinerario anteriores y agrega `date`, `entry_minutes` y `service_start` en las paradas. `GET /api/plan` recupera el último plan o devuelve `null` si no existe.
 
@@ -98,3 +98,33 @@ La guía completa está en [CONTRIBUTING.md](CONTRIBUTING.md). `.github/CODEOWNE
 - `.agents/rules/vialseg.md`: regla de workspace para Antigravity; activar Always On según la guía.
 
 Antes de solicitar cambios a un agente, indicar siempre el objetivo, el alcance y cómo validar el resultado. Por ejemplo: “Actualizá la ponderación SLA y verificá que la ruta siga regresando dentro de 480 minutos”.
+
+## Integración de inspecciones y jornadas
+
+Al abrir se recupera el plan guardado. Si no existe, se calcula uno con los
+equipos simulados pendientes. Cada jornada muestra Pendientes y Terminados;
+el tercer control de la checklist completa la visita automáticamente. El
+historial es global a las jornadas e incluye fecha de finalización y duración.
+Las casillas y el cronómetro son independientes por equipo. Se reutiliza la
+clave localStorage anterior para conservar el historial del prototipo.
+
+Al optimizar nuevamente se excluyen los equipos terminados. Completar una
+visita no altera la geometría ni los horarios del plan original. Los datos de
+inspección persisten en el mismo navegador, no se sincronizan entre dispositivos
+y las casillas no suben fotografías. No hay todavía reapertura de órdenes.
+
+La API exige minutos enteros de 60 a 480 antes de consultar el proveedor vial.
+Pruebas de inspecciones: `node tests/test_inspections.cjs`.
+
+## Inicio, fin y fechas
+
+La pantalla permite indicar inicio y fin de jornada y calcula su diferencia
+en minutos. Ambos horarios son del mismo día; se admite de 1 a 8 horas. Ese
+tiempo limita cada jornada incluyendo traslados, ingreso, atención y regreso.
+La API acepta `end_time`; cuando está presente, determina la duración a partir
+de `start_time`. Sin `end_time` conserva compatibilidad con `max_minutes`.
+Los planes guardan el fin y recuperan los horarios al recargar.
+
+Todas las fechas visibles usan DD/MM/AAAA, incluido el selector de jornadas
+y el historial. La API y el almacenamiento conservan AAAA-MM-DD para evitar
+ambigüedades. La entrada de fecha valida el formato y el día real del calendario.
