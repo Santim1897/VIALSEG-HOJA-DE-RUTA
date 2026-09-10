@@ -7,7 +7,7 @@ const source = fs.readFileSync(path.join(__dirname, '../app.py'), 'utf8');
 const logic = source.slice(source.indexOf("const INSPECTION_KEY="), source.indexOf('async function initialize()'));
 let saved = null, fail = false;
 const elements = Object.fromEntries(['radarSelect', 'checks', 'timerBtn', 'timer', 'inspectionMessage',
-    'checkVisual', 'checkCalibration', 'checkPhoto', 'evidencePreview', 'evidenceFile'].map(id => [id, { value: '', textContent: '' }]));
+    'checkVisual', 'checkCalibration', 'checkPhoto', 'evidencePreview', 'evidenceFile', 'evidenceVideo'].map(id => [id, { value: '', textContent: '', pause(){} }]));
 const context = vm.createContext({
     console, Date,
     document: {querySelector: id => elements[id.slice(1)], getElementById: id => elements[id]},
@@ -50,7 +50,8 @@ assert.deepEqual(state().drafts.B.checks, [false,true,false]);
 elements.radarSelect.value = 'B';
 run('toggleTimer()');
 assert.equal(typeof state().drafts.B.runningSince, 'number');
-run("updateCheck(0,true);updateCheck(2,true,'data:image/png;base64,aGVsbG8=')");
+run("updateCheck(0,true);updateCheck(2,true,'data:video/mp4;base64,aGVsbG8=')");
+assert.equal(state().history[0].evidence, 'data:video/mp4;base64,aGVsbG8=');
 assert.equal(state().history.length, 2);
 assert.ok(state().history[0].started_at);
 assert.equal(state().drafts.B, undefined, 'Finalizar detiene el cronómetro');
