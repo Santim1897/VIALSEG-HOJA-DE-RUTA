@@ -7,10 +7,10 @@ const source = fs.readFileSync(path.join(__dirname, '../app.py'), 'utf8');
 const logic = source.slice(source.indexOf("const INSPECTION_KEY="), source.indexOf('async function initialize()'));
 let saved = null, fail = false;
 const elements = Object.fromEntries(['radarSelect', 'checks', 'timerBtn', 'timer', 'inspectionMessage',
-    'checkVisual', 'checkCalibration', 'checkPhoto', 'evidencePreview', 'evidenceFile', 'evidenceVideo', 'closure', 'problem', 'work', 'parts', 'notes', 'result', 'reason', 'reasonWrap'].map(id => [id, { value: '', textContent: '', pause(){} }]));
+    'checkVisual', 'checkCalibration', 'checkPhoto', 'evidencePreview', 'evidenceFile', 'evidenceVideo', 'closure', 'problem', 'work', 'parts', 'notes', 'result', 'reason', 'reasonWrap', 'workDetail', 'reasonDetail', 'partsWrap', 'workDetailWrap', 'reasonDetailWrap'].map(id => [id, { value: '', textContent: '', pause(){} }]));
 const context = vm.createContext({
     console, Date,
-    document: {querySelector: id => elements[id.slice(1)], getElementById: id => elements[id]},
+    document: {querySelectorAll:()=>[], querySelector: id => elements[id.slice(1)], getElementById: id => elements[id]},
     localStorage: {
         setItem: (_, value) => { if (fail) throw new Error('Storage full'); saved = value; },
         getItem: () => saved,
@@ -66,3 +66,5 @@ assert.equal(state().history.length, 2);
 assert.ok(state().history[0].started_at);
 assert.equal(state().drafts.B, undefined, 'Finalizar detiene el cronómetro');
 console.log('OK: controles independientes, guardado fallido, cierre único, restauración y cronómetro.');
+
+assert.equal(run("hasEvidence({evidence:'data:video/mp4;base64,aGVsbG8='})"),true);
