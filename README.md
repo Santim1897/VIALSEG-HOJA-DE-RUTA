@@ -128,3 +128,7 @@ Los planes guardan el fin y recuperan los horarios al recargar.
 Todas las fechas visibles usan DD/MM/AAAA, incluido el selector de jornadas
 y el historial. La API y el almacenamiento conservan AAAA-MM-DD para evitar
 ambigüedades. La entrada de fecha valida el formato y el día real del calendario.
+
+
+## Cierre de mantenimiento
+Los controles no finalizan automáticamente la visita. El operario completa problema, trabajo realizado, resultado, repuestos y observaciones y pulsa Finalizar mantenimiento. Los resultados parcial o sin resolver requieren motivo y quedan señalados para otra visita, sin reprogramación automática. Se exige inspección visual y evidencia; para funcionamiento completo también calibración. Formulario e historial se guardan en el navegador, sin base compartida.
