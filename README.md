@@ -132,3 +132,7 @@ ambigüedades. La entrada de fecha valida el formato y el día real del calendar
 
 ## Cierre de mantenimiento
 Los controles no finalizan automáticamente la visita. El operario completa problema, trabajo realizado, resultado, repuestos y observaciones y pulsa Finalizar mantenimiento. Los resultados parcial o sin resolver requieren motivo y quedan señalados para otra visita, sin reprogramación automática. Se exige inspección visual y evidencia; para funcionamiento completo también calibración. Formulario e historial se guardan en el navegador, sin base compartida.
+
+
+## Cierre rápido
+El operario elige resultado y uno o varios trabajos mediante botones. Solo Otro requiere detalle escrito. Repuestos aparece al elegir Cambio de pieza. Resultado parcial o sin resolver exige elegir qué falta. Evidencia obligatoria, comentario opcional. Ya no se piden casillas de inspección y calibración; los cierres nuevos no declaran esos controles automáticamente. Se conserva el historial anterior.
