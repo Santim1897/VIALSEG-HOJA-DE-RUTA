@@ -7,7 +7,7 @@ const source = fs.readFileSync(path.join(__dirname, '../app.py'), 'utf8');
 const logic = source.slice(source.indexOf("const INSPECTION_KEY="), source.indexOf('async function initialize()'));
 let saved = null, fail = false;
 const elements = Object.fromEntries(['radarSelect', 'checks', 'timerBtn', 'timer', 'inspectionMessage',
-    'checkVisual', 'checkCalibration', 'checkPhoto', 'evidencePreview', 'evidenceFile', 'evidenceVideo'].map(id => [id, { value: '', textContent: '', pause(){} }]));
+    'checkVisual', 'checkCalibration', 'checkPhoto', 'evidencePreview', 'evidenceFile', 'evidenceVideo', 'closure', 'problem', 'work', 'parts', 'notes', 'result', 'reason', 'reasonWrap'].map(id => [id, { value: '', textContent: '', pause(){} }]));
 const context = vm.createContext({
     console, Date,
     document: {querySelector: id => elements[id.slice(1)], getElementById: id => elements[id]},
@@ -38,6 +38,11 @@ assert.equal(state().history.length, 0, 'Un error de guardado debe dejar la tare
 assert.equal(state().drafts.A.checks[2], false);
 fail = false;
 run("updateCheck(2,true,'data:image/png;base64,aGVsbG8=');updateCheck(2,true)");
+assert.equal(state().history.length, 0, 'La checklist no cierra automáticamente');
+run('finishInspection()');
+assert.equal(state().history.length, 0, 'Formulario vacío bloqueado');
+elements.problem.value='Falla';elements.work.value='Ajuste';elements.result.value='Funcionando';
+run('finishInspection();finishInspection()');
 assert.equal(state().history.length, 1, 'El cierre no se duplica');
 assert.equal(state().history[0].radar_id, 'A');
 assert.equal(state().history[0].started_at, null);
@@ -51,6 +56,11 @@ elements.radarSelect.value = 'B';
 run('toggleTimer()');
 assert.equal(typeof state().drafts.B.runningSince, 'number');
 run("updateCheck(0,true);updateCheck(2,true,'data:video/mp4;base64,aGVsbG8=')");
+elements.problem.value='Falla';elements.work.value='Diagnóstico';elements.result.value='Sin resolver';
+run('finishInspection()');
+assert.equal(state().history.length, 1, 'Sin motivo no cierra');
+elements.reason.value='Falta repuesto';run('finishInspection()');
+assert.equal(state().history[0].needs_revisit, true);
 assert.equal(state().history[0].evidence, 'data:video/mp4;base64,aGVsbG8=');
 assert.equal(state().history.length, 2);
 assert.ok(state().history[0].started_at);
