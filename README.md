@@ -136,3 +136,7 @@ Los controles no finalizan automáticamente la visita. El operario completa prob
 
 ## Cierre rápido
 El operario elige resultado y uno o varios trabajos mediante botones. Solo Otro requiere detalle escrito. Repuestos aparece al elegir Cambio de pieza. Resultado parcial o sin resolver exige elegir qué falta. Evidencia obligatoria, comentario opcional. Ya no se piden casillas de inspección y calibración; los cierres nuevos no declaran esos controles automáticamente. Se conserva el historial anterior.
+
+
+## Visitas por equipo y próxima atención
+Cada cierre tiene un identificador de visita. El historial previo se conserva como visita inicial. Desde el último registro del equipo se puede crear una nueva visita, sin duplicar una pendiente; requiere optimizar para asignar jornada. No hay recurrencia automática. La tarjeta Mi próxima visita sigue el orden de la jornada, abre indicaciones a las coordenadas simuladas y permite iniciar atención o ir al cierre. Los datos siguen siendo locales a cada navegador.

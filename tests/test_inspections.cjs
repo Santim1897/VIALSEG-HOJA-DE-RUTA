@@ -9,7 +9,7 @@ let saved = null, fail = false;
 const elements = Object.fromEntries(['radarSelect', 'checks', 'timerBtn', 'timer', 'inspectionMessage',
     'checkVisual', 'checkCalibration', 'checkPhoto', 'evidencePreview', 'evidenceFile', 'evidenceVideo', 'closure', 'problem', 'work', 'parts', 'notes', 'result', 'reason', 'reasonWrap', 'workDetail', 'reasonDetail', 'partsWrap', 'workDetailWrap', 'reasonDetailWrap'].map(id => [id, { value: '', textContent: '', pause(){} }]));
 const context = vm.createContext({
-    console, Date,
+    console, Date, crypto:require('node:crypto').webcrypto,
     document: {querySelectorAll:()=>[], querySelector: id => elements[id.slice(1)], getElementById: id => elements[id]},
     localStorage: {
         setItem: (_, value) => { if (fail) throw new Error('Storage full'); saved = value; },
@@ -68,3 +68,20 @@ assert.equal(state().drafts.B, undefined, 'Finalizar detiene el cronómetro');
 console.log('OK: controles independientes, guardado fallido, cierre único, restauración y cronómetro.');
 
 assert.equal(run("hasEvidence({evidence:'data:video/mp4;base64,aGVsbG8='})"),true);
+
+const priorCount=state().history.length;
+run("createVisit('A')");
+assert.equal(run("isCompleted('A')"),false);
+assert.equal(state().history.length,priorCount,'Nueva visita conserva historial');
+const active=state().visits.A;
+run("createVisit('A')");assert.equal(state().visits.A,active,'No duplica visitas pendientes');
+run('inspectionState={drafts:{},history:[]};restoreState()');
+assert.equal(state().visits.A,active,'Visita persiste al recargar');
+elements.radarSelect.value='A';
+run("updateCheck(2,true,'data:image/png;base64,aGVsbG8=')");
+elements.result.value='Funcionando';elements.work.value='Ajuste';
+run('finishInspection()');
+assert.equal(state().history.length,priorCount+1);
+assert.equal(state().history[0].visit_id,active);
+assert.equal(run("isCompleted('A')"),true);
+console.log('OK: múltiples visitas por equipo, restauración y cierre independiente.');
