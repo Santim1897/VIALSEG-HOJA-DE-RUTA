@@ -173,42 +173,65 @@ def _here_route_geometry(waypoints: list[dict], departure_iso: str) -> tuple[lis
     return geometry, legs
 
 
-def _decode_here_polyline(encoded: str) -> list:
-    """Decodifica HERE Flexible Polyline encoding a lista de [lon, lat]."""
+try:
+    import flexpolyline
+except ImportError:
+    flexpolyline = None
+
+_HERE_DECODING_TABLE = [
+    62, -1, -1, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, -1, -1, -1, -1, -1, -1, -1,
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+    22, 23, 24, 25, -1, -1, -1, -1, 63, -1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
+    36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51
+]
+
+
+def _decode_here_polyline(encoded: str) -> list[list[float]]:
+    """Decodifica HERE Flexible Polyline a lista de coordenadas GeoJSON [lon, lat]."""
     if not encoded:
         return []
-    # Tabla de caracteres válidos en HERE Flexible Polyline
-    DECODE_TABLE = {c: i for i, c in enumerate("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")}
-    result, lat, lng = [], 0, 0
-    i = 0
-    # Saltar cabecera (primer carácter = versión, segundo = precisión y tipo)
-    header_len = 2
-    i += header_len
-    precision = 5  # HERE usa 5 dígitos de precisión por defecto
-    factor = 10 ** precision
+    if flexpolyline is not None:
+        try:
+            return [[round(lng, 6), round(lat, 6)] for lat, lng in flexpolyline.decode(encoded)]
+        except Exception:
+            pass
 
-    def decode_value(pos: int) -> tuple[int, int]:
-        result_val, shift, delta = 0, 0, 0
-        while pos < len(encoded):
-            c = encoded[pos]
-            pos += 1
-            val = DECODE_TABLE.get(c, 0)
-            delta |= (val & 0x1F) << shift
+    # Implementación pura en caso de no contar con la librería instalada
+    def to_signed(val: int) -> int:
+        return ~val if (val & 1) else (val >> 1)
+
+    values: list[int] = []
+    result = shift = 0
+    for char in encoded:
+        code = ord(char) - 45
+        if code < 0 or code >= len(_HERE_DECODING_TABLE) or _HERE_DECODING_TABLE[code] < 0:
+            continue
+        val = _HERE_DECODING_TABLE[code]
+        result |= (val & 0x1F) << shift
+        if not (val & 0x20):
+            values.append(result)
+            result = shift = 0
+        else:
             shift += 5
-            if val < 0x20:
-                break
-        return (-(delta >> 1) if delta & 1 else delta >> 1), pos
 
-    try:
-        while i < len(encoded):
-            dlat, i = decode_value(i)
-            dlng, i = decode_value(i)
-            lat += dlat
-            lng += dlng
-            result.append([round(lng / factor, 6), round(lat / factor, 6)])
-    except Exception:
+    if len(values) < 2:
         return []
-    return result
+
+    precision = values[1] & 15
+    third_dim = (values[1] >> 4) & 7
+    factor = 10.0 ** precision
+
+    coords: list[list[float]] = []
+    idx = 2
+    last_lat = last_lng = 0
+    while idx + 1 < len(values):
+        last_lat += to_signed(values[idx])
+        last_lng += to_signed(values[idx + 1])
+        idx += 2
+        if third_dim:
+            idx += 1
+        coords.append([round(last_lng / factor, 6), round(last_lat / factor, 6)])
+    return coords
 
 # Esquema auditable de ponderacion. Los tres primeros criterios construyen
 # el beneficio de resolver el ticket; cercania y jornada definen su inclusion.
