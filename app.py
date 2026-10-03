@@ -75,49 +75,58 @@ def _here_matrix(points: list[dict], departure_iso: str) -> tuple[list, list]:
 
     departure_iso: ISO 8601 sin offset, p. ej. '2026-10-03T08:00:00'
     Devuelve (durations_seg, distances_m) como matrices NxN, con None donde no hay camino.
+    Divide los orígenes en lotes de hasta 15 puntos para cumplir el límite de HERE (máx 15 orígenes).
     """
     n = len(points)
-    origins = [{"lat": p["lat"], "lng": p["lon"]} for p in points]
-    # RFC 3339 con offset de zona horaria de Argentina (UTC-3)
+    destinations = [{"lat": p["lat"], "lng": p["lon"]} for p in points]
     dep_rfc3339 = departure_iso if "+" in departure_iso or departure_iso.endswith("Z") else departure_iso + "-03:00"
-    payload = json.dumps({
-        "origins": origins,
-        "destinations": origins,
-        "regionDefinition": {"type": "world"},
-        "transportMode": "car",
-        "matrixAttributes": ["travelTimes", "distances"],
-        "departureTime": dep_rfc3339,
-    }).encode()
     url = f"https://matrix.router.hereapi.com/v8/matrix?async=false&apiKey={HERE_API_KEY}"
-    req = Request(url, data=payload, headers={
-        "Content-Type": "application/json",
-        "User-Agent": "Vialseg-prototype/0.3",
-    })
-    try:
-        with urlopen(req, timeout=30) as resp:
-            data = json.load(resp)
-    except (URLError, TimeoutError, OSError) as exc:
-        raise HTTPException(503, detail="No se pudo consultar HERE Matrix API. Reintente.") from exc
 
-    matrix_data = data.get("matrix", {})
-    travel_times = matrix_data.get("travelTimes", [])
-    distances_m = matrix_data.get("distances", [])
-    error_codes = matrix_data.get("errorCodes", [])
+    all_durations: list[list[int | None]] = []
+    all_distances: list[list[int | None]] = []
 
-    def to_matrix(flat: list, errors: list) -> list:
-        rows = []
-        for i in range(n):
-            row = []
-            for j in range(n):
-                idx = i * n + j
-                has_error = errors[idx] if idx < len(errors) else 0
-                row.append(None if has_error else (flat[idx] if idx < len(flat) else None))
-            rows.append(row)
-        return rows
+    # HERE limita a máx 15 orígenes por solicitud síncrona
+    batch_size = 15
+    for chunk_start in range(0, n, batch_size):
+        chunk_points = points[chunk_start:chunk_start + batch_size]
+        origins = [{"lat": p["lat"], "lng": p["lon"]} for p in chunk_points]
+        payload = json.dumps({
+            "origins": origins,
+            "destinations": destinations,
+            "regionDefinition": {"type": "world"},
+            "transportMode": "car",
+            "matrixAttributes": ["travelTimes", "distances"],
+            "departureTime": dep_rfc3339,
+        }).encode()
+        req = Request(url, data=payload, headers={
+            "Content-Type": "application/json",
+            "User-Agent": "Vialseg-prototype/0.3",
+        })
+        try:
+            with urlopen(req, timeout=30) as resp:
+                data = json.load(resp)
+        except (URLError, TimeoutError, OSError) as exc:
+            raise HTTPException(503, detail="No se pudo consultar HERE Matrix API. Reintente.") from exc
 
-    dur = to_matrix(travel_times, error_codes)
-    dist = to_matrix(distances_m, error_codes)
-    return dur, dist
+        matrix_data = data.get("matrix", {})
+        travel_times = matrix_data.get("travelTimes", [])
+        distances_m = matrix_data.get("distances", [])
+        error_codes = matrix_data.get("errorCodes", [])
+
+        chunk_len = len(chunk_points)
+        dest_len = len(destinations)
+        for i in range(chunk_len):
+            dur_row: list[int | None] = []
+            dist_row: list[int | None] = []
+            for j in range(dest_len):
+                idx = i * dest_len + j
+                has_error = error_codes[idx] if idx < len(error_codes) else 0
+                dur_row.append(None if has_error else (travel_times[idx] if idx < len(travel_times) else None))
+                dist_row.append(None if has_error else (distances_m[idx] if idx < len(distances_m) else None))
+            all_durations.append(dur_row)
+            all_distances.append(dist_row)
+
+    return all_durations, all_distances
 
 
 def _here_route_geometry(waypoints: list[dict], departure_iso: str) -> tuple[list, list]:
