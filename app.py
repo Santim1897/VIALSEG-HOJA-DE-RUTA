@@ -59,8 +59,156 @@ ENTRY_MINUTES = 15
 PLAN_FILE = Path(__file__).resolve().parent / '.local' / 'plan.json'
 _plan_lock = Lock()
 OSRM_URL = os.environ.get("OSRM_URL", "https://router.project-osrm.org").rstrip("/")
+HERE_API_KEY = os.environ.get("HERE_API_KEY", "")
 _road_lock = Lock()
 _last_road_request = 0.0
+
+
+# ---------------------------------------------------------------------------
+# HERE Routing API (tráfico en tiempo real)
+# Se activa automáticamente cuando HERE_API_KEY está definida.
+# Sin clave, el sistema usa OSRM como siempre.
+# ---------------------------------------------------------------------------
+
+def _here_matrix(points: list[dict], departure_iso: str) -> tuple[list, list]:
+    """Consulta HERE Matrix Routing API con tráfico según hora de salida.
+
+    departure_iso: ISO 8601 sin offset, p. ej. '2026-10-03T08:00:00'
+    Devuelve (durations_seg, distances_m) como matrices NxN, con None donde no hay camino.
+    """
+    n = len(points)
+    origins = [{"lat": p["lat"], "lng": p["lon"]} for p in points]
+    # RFC 3339 con offset de zona horaria de Argentina (UTC-3)
+    dep_rfc3339 = departure_iso if "+" in departure_iso or departure_iso.endswith("Z") else departure_iso + "-03:00"
+    payload = json.dumps({
+        "origins": origins,
+        "destinations": origins,
+        "regionDefinition": {"type": "world"},
+        "transportMode": "car",
+        "matrixAttributes": ["travelTimes", "distances"],
+        "departureTime": dep_rfc3339,
+    }).encode()
+    url = f"https://matrix.router.hereapi.com/v8/matrix?async=false&apiKey={HERE_API_KEY}"
+    req = Request(url, data=payload, headers={
+        "Content-Type": "application/json",
+        "User-Agent": "Vialseg-prototype/0.3",
+    })
+    try:
+        with urlopen(req, timeout=30) as resp:
+            data = json.load(resp)
+    except (URLError, TimeoutError, OSError) as exc:
+        raise HTTPException(503, detail="No se pudo consultar HERE Matrix API. Reintente.") from exc
+
+    matrix_data = data.get("matrix", {})
+    travel_times = matrix_data.get("travelTimes", [])
+    distances_m = matrix_data.get("distances", [])
+    error_codes = matrix_data.get("errorCodes", [])
+
+    def to_matrix(flat: list, errors: list) -> list:
+        rows = []
+        for i in range(n):
+            row = []
+            for j in range(n):
+                idx = i * n + j
+                has_error = errors[idx] if idx < len(errors) else 0
+                row.append(None if has_error else (flat[idx] if idx < len(flat) else None))
+            rows.append(row)
+        return rows
+
+    dur = to_matrix(travel_times, error_codes)
+    dist = to_matrix(distances_m, error_codes)
+    return dur, dist
+
+
+def _here_route_geometry(waypoints: list[dict], departure_iso: str) -> tuple[list, list]:
+    """Consulta HERE Routes API para obtener geometría y tiempos de cada tramo con tráfico.
+
+    Devuelve (geometry_coords [[lon, lat], ...], legs_list [{"duration": seg, "distance": m}, ...])
+    """
+    if len(waypoints) < 2:
+        return [], []
+
+    origin = f"{waypoints[0]['lat']},{waypoints[0]['lon']}"
+    destination = f"{waypoints[-1]['lat']},{waypoints[-1]['lon']}"
+    via_params = "".join(
+        f"&via={p['lat']},{p['lon']}"
+        for p in waypoints[1:-1]
+    )
+    url = (
+        f"https://router.hereapi.com/v8/routes"
+        f"?transportMode=car"
+        f"&origin={origin}"
+        f"&destination={destination}"
+        f"{via_params}"
+        f"&return=polyline,summary,travelSummary"
+        f"&departureTime={departure_iso}"
+        f"&apiKey={HERE_API_KEY}"
+    )
+    req = Request(url, headers={"User-Agent": "Vialseg-prototype/0.3"})
+    try:
+        with urlopen(req, timeout=30) as resp:
+            data = json.load(resp)
+    except (URLError, TimeoutError, OSError) as exc:
+        raise HTTPException(503, detail="No se pudo obtener la ruta de HERE. Reintente.") from exc
+
+    try:
+        route = data["routes"][0]
+    except (KeyError, IndexError) as exc:
+        raise HTTPException(503, detail="HERE no devolvió una ruta válida.") from exc
+
+    # Decodificar polyline flexible (HERE usa encoding propio)
+    geometry: list = []
+    for section in route.get("sections", []):
+        poly = section.get("polyline", "")
+        # HERE usa Flexible Polyline encoding; decodificamos manualmente
+        geometry.extend(_decode_here_polyline(poly))
+
+    legs = [
+        {
+            "duration": sec.get("travelSummary", {}).get("duration", 0),
+            "distance": sec.get("travelSummary", {}).get("length", 0),
+        }
+        for sec in route.get("sections", [])
+    ]
+    return geometry, legs
+
+
+def _decode_here_polyline(encoded: str) -> list:
+    """Decodifica HERE Flexible Polyline encoding a lista de [lon, lat]."""
+    if not encoded:
+        return []
+    # Tabla de caracteres válidos en HERE Flexible Polyline
+    DECODE_TABLE = {c: i for i, c in enumerate("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")}
+    result, lat, lng = [], 0, 0
+    i = 0
+    # Saltar cabecera (primer carácter = versión, segundo = precisión y tipo)
+    header_len = 2
+    i += header_len
+    precision = 5  # HERE usa 5 dígitos de precisión por defecto
+    factor = 10 ** precision
+
+    def decode_value(pos: int) -> tuple[int, int]:
+        result_val, shift, delta = 0, 0, 0
+        while pos < len(encoded):
+            c = encoded[pos]
+            pos += 1
+            val = DECODE_TABLE.get(c, 0)
+            delta |= (val & 0x1F) << shift
+            shift += 5
+            if val < 0x20:
+                break
+        return (-(delta >> 1) if delta & 1 else delta >> 1), pos
+
+    try:
+        while i < len(encoded):
+            dlat, i = decode_value(i)
+            dlng, i = decode_value(i)
+            lat += dlat
+            lng += dlng
+            result.append([round(lng / factor, 6), round(lat / factor, 6)])
+    except Exception:
+        return []
+    return result
 
 # Esquema auditable de ponderacion. Los tres primeros criterios construyen
 # el beneficio de resolver el ticket; cercania y jornada definen su inclusion.
@@ -93,17 +241,24 @@ RADARS = [
 ]
 
 
+class RadarOverride(BaseModel):
+    priority: str | None = None    # "Leve" | "Medio" | "Alto"
+    lead_hours: int | None = None  # horas caidas
+    billing: int | None = None     # valor comercial en pesos
+
+
 class RouteRequest(BaseModel):
     start_date: str | None = None
     start_time: str = START_TIME
     end_time: str | None = None
     max_minutes: int = Field(WORKDAY_MINUTES, ge=60, strict=True)
     selected_ids: list[str] | None = None
+    radar_overrides: dict[str, RadarOverride] | None = None  # {id: overrides}
 
 
 @lru_cache(maxsize=32)
 def _road_json(path: str, time_bucket: int) -> dict:
-    """Cache breve y solicitudes serializadas para el servidor de demostracion."""
+    """Cache breve y solicitudes serializadas para el servidor OSRM de demostracion."""
     global _last_road_request
     with _road_lock:
         sleep(max(0, 1.1 - (monotonic() - _last_road_request)))
@@ -125,7 +280,17 @@ def road_data(service: str, points: list[dict], options: str) -> dict:
     return _road_json(f"/{service}/v1/driving/{coordinates}?{options}", int(monotonic() // 600))
 
 
-def road_matrix(points: list[dict]) -> tuple[list, list]:
+def road_matrix(points: list[dict], departure_iso: str | None = None) -> tuple[list, list]:
+    """Matriz de tiempos y distancias entre todos los puntos.
+
+    Con HERE_API_KEY usa HERE Matrix API con trafico real segun departure_iso.
+    Sin clave usa OSRM (tiempos estaticos sin trafico).
+    """
+    if HERE_API_KEY:
+        dep = departure_iso or datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+        return _here_matrix(points, dep)
+
+    # Fallback: OSRM
     data = road_data("table", points, "annotations=duration,distance")
     size = len(points)
     try:
@@ -137,7 +302,7 @@ def road_matrix(points: list[dict]) -> tuple[list, list]:
                 raise ValueError("Valor vial invalido")
         return durations, distances
     except (KeyError, TypeError, ValueError) as exc:
-        raise HTTPException(503, detail="El proveedor devolvió una matriz vial inválida.") from exc
+        raise HTTPException(503, detail="El proveedor devolvio una matriz vial invalida.") from exc
 
 
 def tier_factor(value: float, bands: list[tuple[float, float]]) -> float:
@@ -207,31 +372,49 @@ def choose_order(nodes: list[dict], durations: list, distances: list, budget: in
     return list(best)
 
 
-def build_route(nodes: list[dict], start_time: str, max_minutes: int, matrix=None) -> dict:
+def build_route(nodes: list[dict], start_time: str, max_minutes: int, matrix=None, start_date: str | None = None) -> dict:
     if isinstance(max_minutes, bool) or not isinstance(max_minutes, int) or max_minutes < 60:
         raise HTTPException(422, detail="La jornada debe estar al menos 60 minutos")
     try:
         current_time = datetime.strptime(start_time, "%H:%M")
     except (ValueError, TypeError) as exc:
         raise HTTPException(422, detail="start_time debe tener formato HH:MM") from exc
+
+    # Construir ISO de salida combinando fecha (o hoy) con hora de inicio
+    try:
+        day_str = start_date or date.today().isoformat()
+        departure_iso = f"{day_str}T{start_time}:00"
+    except Exception:
+        departure_iso = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+
     points = [BASE, *nodes]
-    durations, distances = matrix if matrix is not None else road_matrix(points)
+    durations, distances = matrix if matrix is not None else road_matrix(points, departure_iso)
     order = choose_order(nodes, durations, distances, max_minutes)
     route, elapsed, total_km, total_value = [], 0, 0.0, 0.0
     geometry, legs = [], []
+
     if order:
-        mapped = road_data("route", [BASE, *(points[i] for i in order), BASE],
-                           "overview=full&geometries=geojson&continue_straight=false")
-        try:
-            mapped_route = mapped["routes"][0]
-            legs = mapped_route["legs"]
-            geometry = mapped_route["geometry"]["coordinates"]
-            if len(legs) != len(order) + 1 or len(geometry) < 2:
-                raise ValueError("Recorrido incompleto")
-            if any(not isfinite(leg[k]) or leg[k] < 0 for leg in legs for k in ("duration", "distance")):
-                raise ValueError("Tramo invalido")
-        except (KeyError, IndexError, TypeError, ValueError) as exc:
-            raise HTTPException(503, detail="El proveedor devolvió un recorrido inválido.") from exc
+        waypoints = [BASE, *(points[i] for i in order), BASE]
+        if HERE_API_KEY:
+            # HERE Routes API: geometría y tiempos por tramo con tráfico real
+            geometry, legs = _here_route_geometry(waypoints, departure_iso)
+            if len(legs) != len(order) + 1:
+                raise HTTPException(503, detail="HERE devolvio un recorrido con tramos incorrectos.")
+        else:
+            # Fallback OSRM
+            mapped = road_data("route", waypoints,
+                               "overview=full&geometries=geojson&continue_straight=false")
+            try:
+                mapped_route = mapped["routes"][0]
+                legs = mapped_route["legs"]
+                geometry = mapped_route["geometry"]["coordinates"]
+                if len(legs) != len(order) + 1 or len(geometry) < 2:
+                    raise ValueError("Recorrido incompleto")
+                if any(not isfinite(leg[k]) or leg[k] < 0 for leg in legs for k in ("duration", "distance")):
+                    raise ValueError("Tramo invalido")
+            except (KeyError, IndexError, TypeError, ValueError) as exc:
+                raise HTTPException(503, detail="El proveedor devolvio un recorrido invalido.") from exc
+
     for index, dest in enumerate(order):
         node, leg = points[dest], legs[index]
         km, go = leg["distance"] / 1000, ceil(leg["duration"] / 60)
@@ -255,11 +438,12 @@ def build_route(nodes: list[dict], start_time: str, max_minutes: int, matrix=Non
     # La geometria final puede diferir de la matriz: nunca publicar una jornada excedida.
     if elapsed > max_minutes:
         raise HTTPException(503, detail="El recorrido final supera la jornada. Reintente con menos equipos.")
+    provider = "HERE / tráfico en tiempo real" if HERE_API_KEY else "OSRM / OpenStreetMap"
     return {"base": BASE, "stops": route, "unassigned": [n for i, n in enumerate(nodes, 1) if i not in order],
             "total_km": round(total_km, 1), "total_minutes": elapsed,
             "return_time": (current_time + timedelta(minutes=elapsed)).strftime("%H:%M"),
             "return_travel_minutes": return_min, "return_distance_km": round(return_km, 1),
-            "geometry": geometry, "routing_provider": "OSRM / OpenStreetMap", "live_traffic": False,
+            "geometry": geometry, "routing_provider": provider, "live_traffic": bool(HERE_API_KEY),
             "sla_value": round(total_value, 1), "service_minutes": SERVICE_MINUTES,
             "scoring_rules": SCORING_RULES}
 
@@ -288,7 +472,9 @@ def build_plan(nodes: list[dict], start_time: str, max_minutes: int, start_date:
         raise HTTPException(422, detail="La fecha debe tener formato AAAA-MM-DD") from exc
     if not nodes:
         raise HTTPException(400, detail="No hay radares seleccionados")
-    all_durations, all_distances = road_matrix([BASE, *nodes])
+    # La matriz inicial usa la hora de salida del primer día; jornadas siguientes recalculan con HERE
+    departure_iso_day0 = f"{day.isoformat()}T{start_time}:00"
+    all_durations, all_distances = road_matrix([BASE, *nodes], departure_iso_day0)
     remaining, days, offset = nodes.copy(), [], 0
     indices = {n['id']: i for i, n in enumerate(nodes, 1)}
     while remaining:
@@ -297,17 +483,18 @@ def build_plan(nodes: list[dict], start_time: str, max_minutes: int, start_date:
                        for values in (all_durations, all_distances))
         # El SLA refleja las horas adicionales de espera, sin modificar los datos originales.
         aged = [{**n, 'lead_hours': n['lead_hours'] + 24 * offset} for n in remaining]
-        route = build_route(aged, start_time, max_minutes, matrix)
+        day_str = (day + timedelta(days=offset)).isoformat()
+        route = build_route(aged, start_time, max_minutes, matrix, start_date=day_str)
         if not route['stops']:
             break
-        route['date'] = (day + timedelta(days=offset)).isoformat()
+        route['date'] = day_str
         days.append(route)
         visited = {n['id'] for n in route['stops']}
         remaining = [n for n in remaining if n['id'] not in visited]
         offset += 1
     return {'start_date': day.isoformat(), 'start_time': start_time, 'end_time': (datetime.strptime(start_time, '%H:%M') + timedelta(minutes=max_minutes)).strftime('%H:%M'), 'days': days,
             'created_at': datetime.now().isoformat(timespec='seconds'),
-            'unscheduled': [{**n, 'reason': 'Sin camino viable o no cabe con ingreso, atención y regreso en una jornada.'}
+            'unscheduled': [{**n, 'reason': 'Sin camino viable o no cabe con ingreso, atencion y regreso en una jornada.'}
                             for n in remaining],
             'deferred_count': sum(len(d['stops']) for d in days[1:]),
             'entry_minutes': ENTRY_MINUTES, 'service_minutes': SERVICE_MINUTES,
@@ -343,6 +530,24 @@ def optimize_route(payload: RouteRequest):
     nodes = [r for r in RADARS if payload.selected_ids is None or r["id"] in payload.selected_ids]
     if not nodes:
         raise HTTPException(400, detail="No hay radares seleccionados")
+    # Aplicar ajustes manuales de parámetros si el usuario los definió
+    if payload.radar_overrides:
+        valid_priorities = {"Leve", "Medio", "Alto"}
+        merged = []
+        for node in nodes:
+            ov = payload.radar_overrides.get(node["id"])
+            if ov is None:
+                merged.append(node)
+                continue
+            patch = {}
+            if ov.priority is not None and ov.priority in valid_priorities:
+                patch["priority"] = ov.priority
+            if ov.lead_hours is not None and ov.lead_hours >= 0:
+                patch["lead_hours"] = ov.lead_hours
+            if ov.billing is not None and ov.billing >= 0:
+                patch["billing"] = ov.billing
+            merged.append({**node, **patch})
+        nodes = merged
     plan = build_plan(nodes, payload.start_time, payload.max_minutes, payload.start_date, payload.end_time)
     save_plan(plan)
     return plan
@@ -432,11 +637,46 @@ aside>div:has(#timer){background:#f4f7f8;margin-top:20px;padding:18px}
 #evidenceFile:disabled{opacity:.5;cursor:not-allowed}
 #evidenceFile:disabled::file-selector-button{cursor:not-allowed}
 @media(prefers-reduced-motion:reduce){#evidenceFile::file-selector-button{transition:none}}
-.closure{margin-top:24px;padding-top:22px;border-top:1px solid var(--line)}.closure label{display:block;font-size:12px;font-weight:600;margin:14px 0 6px}.closure textarea,.closure select{width:100%;min-width:0;border:1px solid var(--line);border-radius:9px;padding:10px;background:#fafcfd;font:inherit;font-size:13px;resize:vertical}.closure textarea:focus{outline:2px solid #00a5d560}.closure button{width:100%;margin-top:18px;min-height:46px;border-radius:9px;background:var(--accent);color:white;font-size:13px;font-weight:600}.closure:disabled{opacity:.5}.closure .quick-options{display:flex;flex-wrap:wrap;gap:8px}.closure .quick-options button{width:auto;flex:1 1 auto;margin:0;padding:10px 12px;background:white;color:var(--ink);border:1px solid var(--line)}.closure .quick-options button[aria-pressed=true]{color:#075f7d;background:#e5f4fa;border-color:var(--accent)}.step-label{font-weight:600;font-size:14px;margin:18px 0 10px}.closure details{margin:18px 0;font-size:13px}.closure summary{cursor:pointer;color:var(--accent);padding:8px 0}#checks label[hidden]{display:none}</style></head>
+.closure{margin-top:24px;padding-top:22px;border-top:1px solid var(--line)}.closure label{display:block;font-size:12px;font-weight:600;margin:14px 0 6px}.closure textarea,.closure select{width:100%;min-width:0;border:1px solid var(--line);border-radius:9px;padding:10px;background:#fafcfd;font:inherit;font-size:13px;resize:vertical}.closure textarea:focus{outline:2px solid #00a5d560}.closure button{width:100%;margin-top:18px;min-height:46px;border-radius:9px;background:var(--accent);color:white;font-size:13px;font-weight:600}.closure:disabled{opacity:.5}.closure .quick-options{display:flex;flex-wrap:wrap;gap:8px}.closure .quick-options button{width:auto;flex:1 1 auto;margin:0;padding:10px 12px;background:white;color:var(--ink);border:1px solid var(--line)}.closure .quick-options button[aria-pressed=true]{color:#075f7d;background:#e5f4fa;border-color:var(--accent)}.step-label{font-weight:600;font-size:14px;margin:18px 0 10px}.closure details{margin:18px 0;font-size:13px}.closure summary{cursor:pointer;color:var(--accent);padding:8px 0}#checks label[hidden]{display:none}
+/* Modal de parámetros manuales */
+#paramsOverlay{position:fixed;inset:0;background:#0008;z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px}
+#paramsOverlay[hidden]{display:none!important}
+#paramsPanel{background:white;border-radius:18px;box-shadow:0 8px 40px #0004;width:100%;max-width:900px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+#paramsPanel header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid var(--line);flex-shrink:0}
+#paramsPanel header h2{font-size:16px;font-weight:650;letter-spacing:-.02em;margin:0}
+#paramsPanel header p{font-size:12px;color:var(--muted);margin:4px 0 0}
+#paramsPanel .panel-body{overflow-y:auto;flex:1}
+#paramsPanel table{width:100%;border-collapse:collapse;font-size:12px}
+#paramsPanel thead th{background:#f8fafb;padding:10px 12px;font-weight:600;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;color:var(--muted);font-size:11px;letter-spacing:.04em}
+#paramsPanel tbody tr{border-bottom:1px solid #f0f3f5}
+#paramsPanel tbody tr:hover{background:#f9fbfc}
+#paramsPanel tbody td{padding:10px 12px;vertical-align:middle}
+#paramsPanel .param-name{font-weight:600;font-size:12px}
+#paramsPanel .param-id{font-size:11px;color:var(--muted)}
+#paramsPanel select.param-sel,#paramsPanel input.param-inp{height:36px;border:1px solid var(--line);border-radius:7px;padding:0 8px;font:inherit;font-size:12px;background:#fafbfc;color:var(--ink);min-width:0}
+#paramsPanel select.param-sel{padding-right:24px}
+#paramsPanel input.param-inp{width:90px;font-variant-numeric:tabular-nums}
+#paramsPanel select.param-sel:focus,#paramsPanel input.param-inp:focus{outline:2px solid #00a5d550;border-color:var(--accent)}
+#paramsPanel .param-changed select.param-sel,#paramsPanel .param-changed input.param-inp{border-color:var(--accent);background:#f0f8ff}
+#paramsPanel footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 24px;border-top:1px solid var(--line);flex-shrink:0;flex-wrap:wrap}
+#paramsPanel .btn-reset{font-size:13px;font-weight:600;color:var(--muted);background:none;border:1px solid var(--line);border-radius:8px;padding:10px 16px;cursor:pointer}
+#paramsPanel .btn-reset:hover{border-color:var(--accent);color:var(--accent)}
+#paramsPanel .btn-apply{font-size:13px;font-weight:600;background:var(--accent);color:white;border:0;border-radius:8px;padding:10px 18px;cursor:pointer}
+#paramsPanel .btn-apply:hover{background:#055a77}
+#paramsModifiedBadge{display:none;font-size:11px;font-weight:700;background:#e5f4fa;color:var(--accent);border:1px solid #b8dcea;border-radius:6px;padding:3px 8px;margin-left:8px;vertical-align:middle}
+#paramsBtn{font-size:12px;font-weight:600;color:var(--accent);background:white;border:1px solid var(--line);border-radius:8px;padding:9px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;flex-shrink:0}
+#paramsBtn:hover{border-color:var(--accent);background:#f5fafd}</style></head>
 <body class="bg-slate-100 text-slate-800"><main class="max-w-7xl mx-auto p-5 md:p-8"><header class="page-header"><div class="page-heading"><p class="eyebrow">VIALSEG / OPERACIONES</p><h1>Tu jornada, organizada.</h1><p class="page-subtitle">Planificá las visitas y seguí cada inspección desde un solo lugar.</p></div>
 <section class="schedule-card" aria-labelledby="schedule-title"><div class="schedule-heading"><div><h2 id="schedule-title">Planificar jornada</h2><p>Elegí la fecha y tu horario de trabajo.</p></div><span class="schedule-tag">HOJA DE RUTA</span></div>
 <div class="schedule-fields"><div class="schedule-field schedule-date"><label for="date">Fecha de la jornada</label><input id="date" type="text" placeholder="DD/MM/AAAA" inputmode="numeric" maxlength="10" aria-describedby="date-format"><span id="date-format" class="field-hint">Día / mes / año</span></div><div class="schedule-field"><label for="start">Hora de inicio</label><input id="start" onchange="updateDuration()" type="time" value="08:00" aria-label="Hora de inicio"></div><div class="schedule-field"><label for="end">Hora de fin</label><input id="end" onchange="updateDuration()" type="time" value="16:00" aria-label="Hora de fin"></div></div>
-<div class="schedule-footer"><span id="workdayDuration" role="status" aria-live="polite"></span><button id="optimize" onclick="loadRoute()">Optimizar ruta <span aria-hidden="true">↗</span></button></div></section></header>
+<div class="schedule-footer"><span id="workdayDuration" role="status" aria-live="polite"></span><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" id="paramsBtn" onclick="openParams()" aria-haspopup="dialog" aria-controls="paramsOverlay" title="Ajustar parámetros de urgencia por equipo">⚙ Parámetros<span id="paramsModifiedBadge" aria-live="polite"></span></button><button type="button" id="optimize" onclick="loadRoute()">Optimizar ruta <span aria-hidden="true">↗</span></button></div></div></section></header>
+<!-- Modal parámetros manuales -->
+<div id="paramsOverlay" role="dialog" aria-modal="true" aria-labelledby="paramsPanelTitle" hidden>
+<div id="paramsPanel">
+<header><div><h2 id="paramsPanelTitle">⚙ Parámetros de urgencia</h2><p>Ajustá severidad, horas caídas y valor comercial de cada equipo. Se aplican al próximo "Optimizar ruta".</p></div><button type="button" onclick="closeParams()" aria-label="Cerrar" style="background:none;border:0;font-size:20px;cursor:pointer;color:var(--muted);line-height:1;padding:4px">✕</button></header>
+<div class="panel-body"><table><thead><tr><th>#</th><th>Equipo / ubicación</th><th>Severidad</th><th>Horas caídas</th><th>Valor comercial ($)</th><th>Puntaje base</th></tr></thead><tbody id="paramsTbody"></tbody></table></div>
+<footer><button type="button" class="btn-reset" onclick="resetParams()">Restaurar valores originales</button><div style="display:flex;gap:10px"><button type="button" class="btn-reset" onclick="closeParams()">Cancelar</button><button type="button" class="btn-apply" onclick="applyParams()">Aplicar y cerrar</button></div></footer>
+</div></div>
 <p id="routeStatus" role="status" class="mb-4 text-sm text-teal-800"></p><section id="planning" class="bg-white p-4 rounded-xl mb-4" hidden><h2 class="font-bold">Visitas programadas</h2><p id="planNotice" class="text-sm my-2"></p><label for="daySelect">Ver jornada: </label><select id="daySelect" onchange="showDay()" class="border rounded p-2"></select><p id="planPending" class="text-amber-800 text-sm mt-2"></p></section><section class="grid md:grid-cols-4 gap-4 mb-5"><div class="bg-white p-4 rounded-xl shadow-sm"><p class="text-xs text-slate-500">PARADAS PLANIFICADAS</p><b id="stops" class="text-2xl">—</b></div><div class="bg-white p-4 rounded-xl shadow-sm"><p class="text-xs text-slate-500">RECORRIDO ESTIMADO</p><b id="km" class="text-2xl">—</b></div><div class="bg-white p-4 rounded-xl shadow-sm"><p class="text-xs text-slate-500">REGRESO A BASE</p><b id="return" class="text-2xl">—</b></div><div class="bg-white p-4 rounded-xl shadow-sm"><p class="text-xs text-slate-500">PUNTAJE OPERATIVO</p><b id="sla" class="text-2xl text-teal-700">—</b></div></section>
 <section class="bg-white rounded-xl shadow-sm overflow-hidden mb-5"><div id="map"></div><p class="p-3 text-xs text-slate-500">Recorridos por calles: OSRM / OpenStreetMap. Tiempos estimados sin tráfico en vivo ni predicción por horario. Datos y accesos simulados · Ingreso: 15 min por barrio + atención: 11 min por equipo.</p></section>
 <section class="grid lg:grid-cols-3 gap-5"><div class="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden"><div class="p-4 border-b"><h2 class="font-bold">Inspecciones</h2><div class="flex gap-2 my-3" role="tablist" aria-label="Estado de inspecciones"><button id="pendingTab" role="tab" aria-selected="true" aria-controls="pendingPanel" onclick="showTab(false)" class="rounded-lg px-4 py-2 bg-teal-700 text-white">Pendientes</button><button id="doneTab" role="tab" aria-selected="false" aria-controls="donePanel" onclick="showTab(true)" class="rounded-lg px-4 py-2 bg-slate-100">Terminados</button></div><p class="text-xs text-slate-500">Puntaje = severidad × SLA × valor comercial × cercanía.</p></div><div id="pendingPanel" role="tabpanel" aria-labelledby="pendingTab"><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50 text-left text-slate-500"><tr><th class="p-3">#</th><th class="p-3">Equipo / ubicación</th><th class="p-3">Severidad</th><th class="p-3">Puntaje</th><th class="p-3">Traslado</th><th class="p-3">Llegada al acceso</th><th class="p-3">Ingreso</th><th class="p-3">Inicio trabajo</th><th class="p-3">Atención</th><th class="p-3">Salida</th><th class="p-3">Km</th></tr></thead><tbody id="table"></tbody></table></div><p id="unassigned" class="p-3 text-xs text-amber-700"></p></div><div id="donePanel" role="tabpanel" aria-labelledby="doneTab" hidden class="p-4"><p class="text-xs text-slate-500 mb-3">Historial guardado en este navegador. Las nuevas inspecciones incluyen una imagen o video de evidencia.</p><div id="history"></div></div></div>
@@ -481,7 +721,10 @@ function showDay(){let d=currentPlan.days[Number(document.querySelector('#daySel
 async function loadRoute(){
  let button=document.querySelector('#optimize'),status=document.querySelector('#routeStatus');button.disabled=true;
  status.textContent='Calculando jornadas y programando pendientes…';
- try{const minutes=jornadaMinutes(),startDate=inputDate();const ids=radarCatalog.filter(r=>!isCompleted(r.id)).map(r=>r.id);if(!ids.length){status.textContent='Todos los equipos están terminados. Podés consultar el historial.';showTab(true);return;}let r=await fetch('/api/route',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({start_date:startDate,start_time:document.querySelector('#start').value,end_time:document.querySelector('#end').value,max_minutes:minutes,selected_ids:ids})});
+ try{const minutes=jornadaMinutes(),startDate=inputDate();const ids=radarCatalog.filter(r=>!isCompleted(r.id)).map(r=>r.id);if(!ids.length){status.textContent='Todos los equipos están terminados. Podés consultar el historial.';showTab(true);return;}
+ const body={start_date:startDate,start_time:document.querySelector('#start').value,end_time:document.querySelector('#end').value,max_minutes:minutes,selected_ids:ids};
+ if(Object.keys(radarOverrides).length)body.radar_overrides=radarOverrides;
+ let r=await fetch('/api/route',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
  let d=await r.json();if(!r.ok)throw new Error(typeof d.detail==='string'?d.detail:'Revisá fecha y horario.');displayPlan(d);
  }catch(e){status.textContent='No se guardó un nuevo plan: '+e.message+'. El plan anterior se conserva.'}finally{button.disabled=false}
 }
@@ -655,8 +898,99 @@ function paintTimer(){
     document.querySelector('#timer').textContent=durationText(d?elapsedSeconds(d):0);
     document.querySelector('#timerBtn').textContent=d?.runningSince?'Pausar atención':d?.started_at?'Reanudar atención':'Iniciar atención';
 }
+// --- Parámetros manuales ---
+const PARAMS_KEY='vialseg.params.v1';
+const SEVERITY_SCORES={Leve:1,Medio:3,Alto:7};
+const SLA_BANDS=[[8,1.00],[16,1.10],[24,1.25],[Infinity,1.40]];
+const COM_BANDS=[[300000,1.00],[600000,1.05],[900000,1.12],[Infinity,1.20]];
+function tierFactor(val,bands){return bands.find(([lim])=>val<=lim)[1]}
+function baseScore(priority,lead_hours,billing){
+  return Math.round(SEVERITY_SCORES[priority]*tierFactor(lead_hours,SLA_BANDS)*tierFactor(billing,COM_BANDS)*100)/100;
+}
+let radarOverrides={}; // {id:{priority?,lead_hours?,billing?}}
+function loadParamsStorage(){
+  try{const raw=localStorage.getItem(PARAMS_KEY);if(raw)radarOverrides=JSON.parse(raw);}catch(e){radarOverrides={};}
+}
+function saveParamsStorage(){
+  try{localStorage.setItem(PARAMS_KEY,JSON.stringify(radarOverrides));}catch(e){}
+}
+function countOverrides(){
+  let n=0;for(const ov of Object.values(radarOverrides))if(Object.keys(ov).length)n++;return n;
+}
+function updateParamsBadge(){
+  const badge=document.getElementById('paramsModifiedBadge');
+  const n=countOverrides();
+  if(n>0){badge.textContent=n+' modificado'+(n>1?'s':'');badge.style.display='inline';}
+  else{badge.style.display='none';}
+}
+function openParams(){
+  const tbody=document.getElementById('paramsTbody');tbody.innerHTML='';
+  radarCatalog.forEach((r,i)=>{
+    const ov=radarOverrides[r.id]||{};
+    const priority=ov.priority||r.priority;
+    const lead_hours=ov.lead_hours!=null?ov.lead_hours:r.lead_hours;
+    const billing=ov.billing!=null?ov.billing:r.billing;
+    const changed=Object.keys(ov).length>0;
+    const tr=document.createElement('tr');
+    if(changed)tr.classList.add('param-changed');
+    tr.dataset.id=r.id;tr.dataset.origPriority=r.priority;tr.dataset.origLead=r.lead_hours;tr.dataset.origBilling=r.billing;
+    tr.innerHTML=`<td>${i+1}</td>
+<td><span class="param-name">${r.id}</span><br><span class="param-id">${r.name}</span></td>
+<td><select class="param-sel" data-field="priority" aria-label="Severidad de ${r.id}">
+  <option value="Leve"${priority==='Leve'?' selected':''}>Leve</option>
+  <option value="Medio"${priority==='Medio'?' selected':''}>Medio</option>
+  <option value="Alto"${priority==='Alto'?' selected':''}>Alto</option>
+</select></td>
+<td><input class="param-inp" type="number" min="0" max="9999" step="1" data-field="lead_hours" value="${lead_hours}" aria-label="Horas caídas de ${r.id}"></td>
+<td><input class="param-inp" type="number" min="0" max="9999999" step="1000" data-field="billing" value="${billing}" aria-label="Valor comercial de ${r.id}" style="width:110px"></td>
+<td class="param-score">${baseScore(priority,lead_hours,billing)}</td>`;
+    // recalcular puntaje en vivo
+    tr.querySelectorAll('.param-sel,.param-inp').forEach(el=>{
+      el.addEventListener('input',()=>{
+        const sel=tr.querySelector('[data-field=priority]').value;
+        const lh=Number(tr.querySelector('[data-field=lead_hours]').value)||0;
+        const bil=Number(tr.querySelector('[data-field=billing]').value)||0;
+        tr.querySelector('.param-score').textContent=baseScore(sel,lh,bil);
+        // marcar fila como modificada si difiere del original
+        const isChanged=(sel!==tr.dataset.origPriority)||(String(lh)!==tr.dataset.origLead)||(String(bil)!==tr.dataset.origBilling);
+        tr.classList.toggle('param-changed',isChanged);
+      });
+    });
+    tbody.appendChild(tr);
+  });
+  document.getElementById('paramsOverlay').hidden=false;
+  document.getElementById('paramsOverlay').querySelector('button[onclick="closeParams()"]').focus();
+}
+function closeParams(){document.getElementById('paramsOverlay').hidden=true;}
+function resetParams(){
+  radarOverrides={};saveParamsStorage();updateParamsBadge();
+  // resetear filas visualmente
+  document.querySelectorAll('#paramsTbody tr').forEach(tr=>{
+    tr.classList.remove('param-changed');
+    tr.querySelector('[data-field=priority]').value=tr.dataset.origPriority;
+    tr.querySelector('[data-field=lead_hours]').value=tr.dataset.origLead;
+    tr.querySelector('[data-field=billing]').value=tr.dataset.origBilling;
+    const p=tr.dataset.origPriority,lh=Number(tr.dataset.origLead),bil=Number(tr.dataset.origBilling);
+    tr.querySelector('.param-score').textContent=baseScore(p,lh,bil);
+  });
+}
+function applyParams(){
+  radarOverrides={};
+  document.querySelectorAll('#paramsTbody tr').forEach(tr=>{
+    const id=tr.dataset.id;
+    const priority=tr.querySelector('[data-field=priority]').value;
+    const lead_hours=Number(tr.querySelector('[data-field=lead_hours]').value)||0;
+    const billing=Number(tr.querySelector('[data-field=billing]').value)||0;
+    const changed=(priority!==tr.dataset.origPriority)||(String(lead_hours)!==tr.dataset.origLead)||(String(billing)!==tr.dataset.origBilling);
+    if(changed)radarOverrides[id]={priority,lead_hours,billing};
+  });
+  saveParamsStorage();updateParamsBadge();closeParams();
+}
+document.getElementById('paramsOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeParams();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!document.getElementById('paramsOverlay').hidden)closeParams();});
+// --- Fin parámetros manuales ---
 async function initialize(){
- restoreState();
+ restoreState();loadParamsStorage();updateParamsBadge();
  try{const r=await fetch('/api/radars');if(!r.ok)throw new Error('No se pudieron cargar los equipos');const data=await r.json();radarCatalog=data.radars;catalogBase=data.base;renderInspections();await restorePlan()}
  catch(e){document.querySelector('#routeStatus').textContent=e.message}
 }
