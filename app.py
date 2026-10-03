@@ -93,12 +93,19 @@ RADARS = [
 ]
 
 
+class RadarOverride(BaseModel):
+    priority: str | None = None    # "Leve" | "Medio" | "Alto"
+    lead_hours: int | None = None  # horas caidas
+    billing: int | None = None     # valor comercial en pesos
+
+
 class RouteRequest(BaseModel):
     start_date: str | None = None
     start_time: str = START_TIME
     end_time: str | None = None
     max_minutes: int = Field(WORKDAY_MINUTES, ge=60, strict=True)
     selected_ids: list[str] | None = None
+    radar_overrides: dict[str, RadarOverride] | None = None  # {id: overrides}
 
 
 @lru_cache(maxsize=32)
@@ -343,6 +350,24 @@ def optimize_route(payload: RouteRequest):
     nodes = [r for r in RADARS if payload.selected_ids is None or r["id"] in payload.selected_ids]
     if not nodes:
         raise HTTPException(400, detail="No hay radares seleccionados")
+    # Aplicar ajustes manuales de parámetros si el usuario los definió
+    if payload.radar_overrides:
+        valid_priorities = {"Leve", "Medio", "Alto"}
+        merged = []
+        for node in nodes:
+            ov = payload.radar_overrides.get(node["id"])
+            if ov is None:
+                merged.append(node)
+                continue
+            patch = {}
+            if ov.priority is not None and ov.priority in valid_priorities:
+                patch["priority"] = ov.priority
+            if ov.lead_hours is not None and ov.lead_hours >= 0:
+                patch["lead_hours"] = ov.lead_hours
+            if ov.billing is not None and ov.billing >= 0:
+                patch["billing"] = ov.billing
+            merged.append({**node, **patch})
+        nodes = merged
     plan = build_plan(nodes, payload.start_time, payload.max_minutes, payload.start_date, payload.end_time)
     save_plan(plan)
     return plan
@@ -432,11 +457,45 @@ aside>div:has(#timer){background:#f4f7f8;margin-top:20px;padding:18px}
 #evidenceFile:disabled{opacity:.5;cursor:not-allowed}
 #evidenceFile:disabled::file-selector-button{cursor:not-allowed}
 @media(prefers-reduced-motion:reduce){#evidenceFile::file-selector-button{transition:none}}
-.closure{margin-top:24px;padding-top:22px;border-top:1px solid var(--line)}.closure label{display:block;font-size:12px;font-weight:600;margin:14px 0 6px}.closure textarea,.closure select{width:100%;min-width:0;border:1px solid var(--line);border-radius:9px;padding:10px;background:#fafcfd;font:inherit;font-size:13px;resize:vertical}.closure textarea:focus{outline:2px solid #00a5d560}.closure button{width:100%;margin-top:18px;min-height:46px;border-radius:9px;background:var(--accent);color:white;font-size:13px;font-weight:600}.closure:disabled{opacity:.5}.closure .quick-options{display:flex;flex-wrap:wrap;gap:8px}.closure .quick-options button{width:auto;flex:1 1 auto;margin:0;padding:10px 12px;background:white;color:var(--ink);border:1px solid var(--line)}.closure .quick-options button[aria-pressed=true]{color:#075f7d;background:#e5f4fa;border-color:var(--accent)}.step-label{font-weight:600;font-size:14px;margin:18px 0 10px}.closure details{margin:18px 0;font-size:13px}.closure summary{cursor:pointer;color:var(--accent);padding:8px 0}#checks label[hidden]{display:none}</style></head>
+.closure{margin-top:24px;padding-top:22px;border-top:1px solid var(--line)}.closure label{display:block;font-size:12px;font-weight:600;margin:14px 0 6px}.closure textarea,.closure select{width:100%;min-width:0;border:1px solid var(--line);border-radius:9px;padding:10px;background:#fafcfd;font:inherit;font-size:13px;resize:vertical}.closure textarea:focus{outline:2px solid #00a5d560}.closure button{width:100%;margin-top:18px;min-height:46px;border-radius:9px;background:var(--accent);color:white;font-size:13px;font-weight:600}.closure:disabled{opacity:.5}.closure .quick-options{display:flex;flex-wrap:wrap;gap:8px}.closure .quick-options button{width:auto;flex:1 1 auto;margin:0;padding:10px 12px;background:white;color:var(--ink);border:1px solid var(--line)}.closure .quick-options button[aria-pressed=true]{color:#075f7d;background:#e5f4fa;border-color:var(--accent)}.step-label{font-weight:600;font-size:14px;margin:18px 0 10px}.closure details{margin:18px 0;font-size:13px}.closure summary{cursor:pointer;color:var(--accent);padding:8px 0}#checks label[hidden]{display:none}
+/* Modal de parámetros manuales */
+#paramsOverlay{position:fixed;inset:0;background:#0008;z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px}
+#paramsPanel{background:white;border-radius:18px;box-shadow:0 8px 40px #0004;width:100%;max-width:900px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+#paramsPanel header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid var(--line);flex-shrink:0}
+#paramsPanel header h2{font-size:16px;font-weight:650;letter-spacing:-.02em;margin:0}
+#paramsPanel header p{font-size:12px;color:var(--muted);margin:4px 0 0}
+#paramsPanel .panel-body{overflow-y:auto;flex:1}
+#paramsPanel table{width:100%;border-collapse:collapse;font-size:12px}
+#paramsPanel thead th{background:#f8fafb;padding:10px 12px;font-weight:600;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;color:var(--muted);font-size:11px;letter-spacing:.04em}
+#paramsPanel tbody tr{border-bottom:1px solid #f0f3f5}
+#paramsPanel tbody tr:hover{background:#f9fbfc}
+#paramsPanel tbody td{padding:10px 12px;vertical-align:middle}
+#paramsPanel .param-name{font-weight:600;font-size:12px}
+#paramsPanel .param-id{font-size:11px;color:var(--muted)}
+#paramsPanel select.param-sel,#paramsPanel input.param-inp{height:36px;border:1px solid var(--line);border-radius:7px;padding:0 8px;font:inherit;font-size:12px;background:#fafbfc;color:var(--ink);min-width:0}
+#paramsPanel select.param-sel{padding-right:24px}
+#paramsPanel input.param-inp{width:90px;font-variant-numeric:tabular-nums}
+#paramsPanel select.param-sel:focus,#paramsPanel input.param-inp:focus{outline:2px solid #00a5d550;border-color:var(--accent)}
+#paramsPanel .param-changed select.param-sel,#paramsPanel .param-changed input.param-inp{border-color:var(--accent);background:#f0f8ff}
+#paramsPanel footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 24px;border-top:1px solid var(--line);flex-shrink:0;flex-wrap:wrap}
+#paramsPanel .btn-reset{font-size:13px;font-weight:600;color:var(--muted);background:none;border:1px solid var(--line);border-radius:8px;padding:10px 16px;cursor:pointer}
+#paramsPanel .btn-reset:hover{border-color:var(--accent);color:var(--accent)}
+#paramsPanel .btn-apply{font-size:13px;font-weight:600;background:var(--accent);color:white;border:0;border-radius:8px;padding:10px 18px;cursor:pointer}
+#paramsPanel .btn-apply:hover{background:#055a77}
+#paramsModifiedBadge{display:none;font-size:11px;font-weight:700;background:#e5f4fa;color:var(--accent);border:1px solid #b8dcea;border-radius:6px;padding:3px 8px;margin-left:8px;vertical-align:middle}
+#paramsBtn{font-size:12px;font-weight:600;color:var(--accent);background:white;border:1px solid var(--line);border-radius:8px;padding:9px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;flex-shrink:0}
+#paramsBtn:hover{border-color:var(--accent);background:#f5fafd}</style></head>
 <body class="bg-slate-100 text-slate-800"><main class="max-w-7xl mx-auto p-5 md:p-8"><header class="page-header"><div class="page-heading"><p class="eyebrow">VIALSEG / OPERACIONES</p><h1>Tu jornada, organizada.</h1><p class="page-subtitle">Planificá las visitas y seguí cada inspección desde un solo lugar.</p></div>
 <section class="schedule-card" aria-labelledby="schedule-title"><div class="schedule-heading"><div><h2 id="schedule-title">Planificar jornada</h2><p>Elegí la fecha y tu horario de trabajo.</p></div><span class="schedule-tag">HOJA DE RUTA</span></div>
 <div class="schedule-fields"><div class="schedule-field schedule-date"><label for="date">Fecha de la jornada</label><input id="date" type="text" placeholder="DD/MM/AAAA" inputmode="numeric" maxlength="10" aria-describedby="date-format"><span id="date-format" class="field-hint">Día / mes / año</span></div><div class="schedule-field"><label for="start">Hora de inicio</label><input id="start" onchange="updateDuration()" type="time" value="08:00" aria-label="Hora de inicio"></div><div class="schedule-field"><label for="end">Hora de fin</label><input id="end" onchange="updateDuration()" type="time" value="16:00" aria-label="Hora de fin"></div></div>
-<div class="schedule-footer"><span id="workdayDuration" role="status" aria-live="polite"></span><button id="optimize" onclick="loadRoute()">Optimizar ruta <span aria-hidden="true">↗</span></button></div></section></header>
+<div class="schedule-footer"><span id="workdayDuration" role="status" aria-live="polite"></span><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button id="paramsBtn" onclick="openParams()" aria-haspopup="dialog" aria-controls="paramsOverlay" title="Ajustar parámetros de urgencia por equipo">⚙ Parámetros<span id="paramsModifiedBadge" aria-live="polite"></span></button><button id="optimize" onclick="loadRoute()">Optimizar ruta <span aria-hidden="true">↗</span></button></div></div></section></header>
+<!-- Modal parámetros manuales -->
+<div id="paramsOverlay" role="dialog" aria-modal="true" aria-labelledby="paramsPanelTitle" hidden>
+<div id="paramsPanel">
+<header><div><h2 id="paramsPanelTitle">⚙ Parámetros de urgencia</h2><p>Ajustá severidad, horas caídas y valor comercial de cada equipo. Se aplican al próximo "Optimizar ruta".</p></div><button onclick="closeParams()" aria-label="Cerrar" style="background:none;border:0;font-size:20px;cursor:pointer;color:var(--muted);line-height:1;padding:4px">✕</button></header>
+<div class="panel-body"><table><thead><tr><th>#</th><th>Equipo / ubicación</th><th>Severidad</th><th>Horas caídas</th><th>Valor comercial ($)</th><th>Puntaje base</th></tr></thead><tbody id="paramsTbody"></tbody></table></div>
+<footer><button class="btn-reset" onclick="resetParams()">Restaurar valores originales</button><div style="display:flex;gap:10px"><button class="btn-reset" onclick="closeParams()">Cancelar</button><button class="btn-apply" onclick="applyParams()">Aplicar y cerrar</button></div></footer>
+</div></div>
 <p id="routeStatus" role="status" class="mb-4 text-sm text-teal-800"></p><section id="planning" class="bg-white p-4 rounded-xl mb-4" hidden><h2 class="font-bold">Visitas programadas</h2><p id="planNotice" class="text-sm my-2"></p><label for="daySelect">Ver jornada: </label><select id="daySelect" onchange="showDay()" class="border rounded p-2"></select><p id="planPending" class="text-amber-800 text-sm mt-2"></p></section><section class="grid md:grid-cols-4 gap-4 mb-5"><div class="bg-white p-4 rounded-xl shadow-sm"><p class="text-xs text-slate-500">PARADAS PLANIFICADAS</p><b id="stops" class="text-2xl">—</b></div><div class="bg-white p-4 rounded-xl shadow-sm"><p class="text-xs text-slate-500">RECORRIDO ESTIMADO</p><b id="km" class="text-2xl">—</b></div><div class="bg-white p-4 rounded-xl shadow-sm"><p class="text-xs text-slate-500">REGRESO A BASE</p><b id="return" class="text-2xl">—</b></div><div class="bg-white p-4 rounded-xl shadow-sm"><p class="text-xs text-slate-500">PUNTAJE OPERATIVO</p><b id="sla" class="text-2xl text-teal-700">—</b></div></section>
 <section class="bg-white rounded-xl shadow-sm overflow-hidden mb-5"><div id="map"></div><p class="p-3 text-xs text-slate-500">Recorridos por calles: OSRM / OpenStreetMap. Tiempos estimados sin tráfico en vivo ni predicción por horario. Datos y accesos simulados · Ingreso: 15 min por barrio + atención: 11 min por equipo.</p></section>
 <section class="grid lg:grid-cols-3 gap-5"><div class="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden"><div class="p-4 border-b"><h2 class="font-bold">Inspecciones</h2><div class="flex gap-2 my-3" role="tablist" aria-label="Estado de inspecciones"><button id="pendingTab" role="tab" aria-selected="true" aria-controls="pendingPanel" onclick="showTab(false)" class="rounded-lg px-4 py-2 bg-teal-700 text-white">Pendientes</button><button id="doneTab" role="tab" aria-selected="false" aria-controls="donePanel" onclick="showTab(true)" class="rounded-lg px-4 py-2 bg-slate-100">Terminados</button></div><p class="text-xs text-slate-500">Puntaje = severidad × SLA × valor comercial × cercanía.</p></div><div id="pendingPanel" role="tabpanel" aria-labelledby="pendingTab"><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50 text-left text-slate-500"><tr><th class="p-3">#</th><th class="p-3">Equipo / ubicación</th><th class="p-3">Severidad</th><th class="p-3">Puntaje</th><th class="p-3">Traslado</th><th class="p-3">Llegada al acceso</th><th class="p-3">Ingreso</th><th class="p-3">Inicio trabajo</th><th class="p-3">Atención</th><th class="p-3">Salida</th><th class="p-3">Km</th></tr></thead><tbody id="table"></tbody></table></div><p id="unassigned" class="p-3 text-xs text-amber-700"></p></div><div id="donePanel" role="tabpanel" aria-labelledby="doneTab" hidden class="p-4"><p class="text-xs text-slate-500 mb-3">Historial guardado en este navegador. Las nuevas inspecciones incluyen una imagen o video de evidencia.</p><div id="history"></div></div></div>
@@ -481,7 +540,10 @@ function showDay(){let d=currentPlan.days[Number(document.querySelector('#daySel
 async function loadRoute(){
  let button=document.querySelector('#optimize'),status=document.querySelector('#routeStatus');button.disabled=true;
  status.textContent='Calculando jornadas y programando pendientes…';
- try{const minutes=jornadaMinutes(),startDate=inputDate();const ids=radarCatalog.filter(r=>!isCompleted(r.id)).map(r=>r.id);if(!ids.length){status.textContent='Todos los equipos están terminados. Podés consultar el historial.';showTab(true);return;}let r=await fetch('/api/route',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({start_date:startDate,start_time:document.querySelector('#start').value,end_time:document.querySelector('#end').value,max_minutes:minutes,selected_ids:ids})});
+ try{const minutes=jornadaMinutes(),startDate=inputDate();const ids=radarCatalog.filter(r=>!isCompleted(r.id)).map(r=>r.id);if(!ids.length){status.textContent='Todos los equipos están terminados. Podés consultar el historial.';showTab(true);return;}
+ const body={start_date:startDate,start_time:document.querySelector('#start').value,end_time:document.querySelector('#end').value,max_minutes:minutes,selected_ids:ids};
+ if(Object.keys(radarOverrides).length)body.radar_overrides=radarOverrides;
+ let r=await fetch('/api/route',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
  let d=await r.json();if(!r.ok)throw new Error(typeof d.detail==='string'?d.detail:'Revisá fecha y horario.');displayPlan(d);
  }catch(e){status.textContent='No se guardó un nuevo plan: '+e.message+'. El plan anterior se conserva.'}finally{button.disabled=false}
 }
@@ -655,8 +717,99 @@ function paintTimer(){
     document.querySelector('#timer').textContent=durationText(d?elapsedSeconds(d):0);
     document.querySelector('#timerBtn').textContent=d?.runningSince?'Pausar atención':d?.started_at?'Reanudar atención':'Iniciar atención';
 }
+// --- Parámetros manuales ---
+const PARAMS_KEY='vialseg.params.v1';
+const SEVERITY_SCORES={Leve:1,Medio:3,Alto:7};
+const SLA_BANDS=[[8,1.00],[16,1.10],[24,1.25],[Infinity,1.40]];
+const COM_BANDS=[[300000,1.00],[600000,1.05],[900000,1.12],[Infinity,1.20]];
+function tierFactor(val,bands){return bands.find(([lim])=>val<=lim)[1]}
+function baseScore(priority,lead_hours,billing){
+  return Math.round(SEVERITY_SCORES[priority]*tierFactor(lead_hours,SLA_BANDS)*tierFactor(billing,COM_BANDS)*100)/100;
+}
+let radarOverrides={}; // {id:{priority?,lead_hours?,billing?}}
+function loadParamsStorage(){
+  try{const raw=localStorage.getItem(PARAMS_KEY);if(raw)radarOverrides=JSON.parse(raw);}catch(e){radarOverrides={};}
+}
+function saveParamsStorage(){
+  try{localStorage.setItem(PARAMS_KEY,JSON.stringify(radarOverrides));}catch(e){}
+}
+function countOverrides(){
+  let n=0;for(const ov of Object.values(radarOverrides))if(Object.keys(ov).length)n++;return n;
+}
+function updateParamsBadge(){
+  const badge=document.getElementById('paramsModifiedBadge');
+  const n=countOverrides();
+  if(n>0){badge.textContent=n+' modificado'+(n>1?'s':'');badge.style.display='inline';}
+  else{badge.style.display='none';}
+}
+function openParams(){
+  const tbody=document.getElementById('paramsTbody');tbody.innerHTML='';
+  radarCatalog.forEach((r,i)=>{
+    const ov=radarOverrides[r.id]||{};
+    const priority=ov.priority||r.priority;
+    const lead_hours=ov.lead_hours!=null?ov.lead_hours:r.lead_hours;
+    const billing=ov.billing!=null?ov.billing:r.billing;
+    const changed=Object.keys(ov).length>0;
+    const tr=document.createElement('tr');
+    if(changed)tr.classList.add('param-changed');
+    tr.dataset.id=r.id;tr.dataset.origPriority=r.priority;tr.dataset.origLead=r.lead_hours;tr.dataset.origBilling=r.billing;
+    tr.innerHTML=`<td>${i+1}</td>
+<td><span class="param-name">${r.id}</span><br><span class="param-id">${r.name}</span></td>
+<td><select class="param-sel" data-field="priority" aria-label="Severidad de ${r.id}">
+  <option value="Leve"${priority==='Leve'?' selected':''}>Leve</option>
+  <option value="Medio"${priority==='Medio'?' selected':''}>Medio</option>
+  <option value="Alto"${priority==='Alto'?' selected':''}>Alto</option>
+</select></td>
+<td><input class="param-inp" type="number" min="0" max="9999" step="1" data-field="lead_hours" value="${lead_hours}" aria-label="Horas caídas de ${r.id}"></td>
+<td><input class="param-inp" type="number" min="0" max="9999999" step="1000" data-field="billing" value="${billing}" aria-label="Valor comercial de ${r.id}" style="width:110px"></td>
+<td class="param-score">${baseScore(priority,lead_hours,billing)}</td>`;
+    // recalcular puntaje en vivo
+    tr.querySelectorAll('.param-sel,.param-inp').forEach(el=>{
+      el.addEventListener('input',()=>{
+        const sel=tr.querySelector('[data-field=priority]').value;
+        const lh=Number(tr.querySelector('[data-field=lead_hours]').value)||0;
+        const bil=Number(tr.querySelector('[data-field=billing]').value)||0;
+        tr.querySelector('.param-score').textContent=baseScore(sel,lh,bil);
+        // marcar fila como modificada si difiere del original
+        const isChanged=(sel!==tr.dataset.origPriority)||(String(lh)!==tr.dataset.origLead)||(String(bil)!==tr.dataset.origBilling);
+        tr.classList.toggle('param-changed',isChanged);
+      });
+    });
+    tbody.appendChild(tr);
+  });
+  document.getElementById('paramsOverlay').hidden=false;
+  document.getElementById('paramsOverlay').querySelector('button[onclick="closeParams()"]').focus();
+}
+function closeParams(){document.getElementById('paramsOverlay').hidden=true;}
+function resetParams(){
+  radarOverrides={};saveParamsStorage();updateParamsBadge();
+  // resetear filas visualmente
+  document.querySelectorAll('#paramsTbody tr').forEach(tr=>{
+    tr.classList.remove('param-changed');
+    tr.querySelector('[data-field=priority]').value=tr.dataset.origPriority;
+    tr.querySelector('[data-field=lead_hours]').value=tr.dataset.origLead;
+    tr.querySelector('[data-field=billing]').value=tr.dataset.origBilling;
+    const p=tr.dataset.origPriority,lh=Number(tr.dataset.origLead),bil=Number(tr.dataset.origBilling);
+    tr.querySelector('.param-score').textContent=baseScore(p,lh,bil);
+  });
+}
+function applyParams(){
+  radarOverrides={};
+  document.querySelectorAll('#paramsTbody tr').forEach(tr=>{
+    const id=tr.dataset.id;
+    const priority=tr.querySelector('[data-field=priority]').value;
+    const lead_hours=Number(tr.querySelector('[data-field=lead_hours]').value)||0;
+    const billing=Number(tr.querySelector('[data-field=billing]').value)||0;
+    const changed=(priority!==tr.dataset.origPriority)||(String(lead_hours)!==tr.dataset.origLead)||(String(billing)!==tr.dataset.origBilling);
+    if(changed)radarOverrides[id]={priority,lead_hours,billing};
+  });
+  saveParamsStorage();updateParamsBadge();closeParams();
+}
+document.getElementById('paramsOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeParams();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!document.getElementById('paramsOverlay').hidden)closeParams();});
+// --- Fin parámetros manuales ---
 async function initialize(){
- restoreState();
+ restoreState();loadParamsStorage();updateParamsBadge();
  try{const r=await fetch('/api/radars');if(!r.ok)throw new Error('No se pudieron cargar los equipos');const data=await r.json();radarCatalog=data.radars;catalogBase=data.base;renderInspections();await restorePlan()}
  catch(e){document.querySelector('#routeStatus').textContent=e.message}
 }
