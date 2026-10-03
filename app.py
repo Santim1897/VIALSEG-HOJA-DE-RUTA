@@ -59,8 +59,156 @@ ENTRY_MINUTES = 15
 PLAN_FILE = Path(__file__).resolve().parent / '.local' / 'plan.json'
 _plan_lock = Lock()
 OSRM_URL = os.environ.get("OSRM_URL", "https://router.project-osrm.org").rstrip("/")
+HERE_API_KEY = os.environ.get("HERE_API_KEY", "")
 _road_lock = Lock()
 _last_road_request = 0.0
+
+
+# ---------------------------------------------------------------------------
+# HERE Routing API (tráfico en tiempo real)
+# Se activa automáticamente cuando HERE_API_KEY está definida.
+# Sin clave, el sistema usa OSRM como siempre.
+# ---------------------------------------------------------------------------
+
+def _here_matrix(points: list[dict], departure_iso: str) -> tuple[list, list]:
+    """Consulta HERE Matrix Routing API con tráfico según hora de salida.
+
+    departure_iso: ISO 8601 sin offset, p. ej. '2026-10-03T08:00:00'
+    Devuelve (durations_seg, distances_m) como matrices NxN, con None donde no hay camino.
+    """
+    n = len(points)
+    origins = [{"lat": p["lat"], "lng": p["lon"]} for p in points]
+    # RFC 3339 con offset de zona horaria de Argentina (UTC-3)
+    dep_rfc3339 = departure_iso if "+" in departure_iso or departure_iso.endswith("Z") else departure_iso + "-03:00"
+    payload = json.dumps({
+        "origins": origins,
+        "destinations": origins,
+        "regionDefinition": {"type": "world"},
+        "transportMode": "car",
+        "matrixAttributes": ["travelTimes", "distances"],
+        "departureTime": dep_rfc3339,
+    }).encode()
+    url = f"https://matrix.router.hereapi.com/v8/matrix?async=false&apiKey={HERE_API_KEY}"
+    req = Request(url, data=payload, headers={
+        "Content-Type": "application/json",
+        "User-Agent": "Vialseg-prototype/0.3",
+    })
+    try:
+        with urlopen(req, timeout=30) as resp:
+            data = json.load(resp)
+    except (URLError, TimeoutError, OSError) as exc:
+        raise HTTPException(503, detail="No se pudo consultar HERE Matrix API. Reintente.") from exc
+
+    matrix_data = data.get("matrix", {})
+    travel_times = matrix_data.get("travelTimes", [])
+    distances_m = matrix_data.get("distances", [])
+    error_codes = matrix_data.get("errorCodes", [])
+
+    def to_matrix(flat: list, errors: list) -> list:
+        rows = []
+        for i in range(n):
+            row = []
+            for j in range(n):
+                idx = i * n + j
+                has_error = errors[idx] if idx < len(errors) else 0
+                row.append(None if has_error else (flat[idx] if idx < len(flat) else None))
+            rows.append(row)
+        return rows
+
+    dur = to_matrix(travel_times, error_codes)
+    dist = to_matrix(distances_m, error_codes)
+    return dur, dist
+
+
+def _here_route_geometry(waypoints: list[dict], departure_iso: str) -> tuple[list, list]:
+    """Consulta HERE Routes API para obtener geometría y tiempos de cada tramo con tráfico.
+
+    Devuelve (geometry_coords [[lon, lat], ...], legs_list [{"duration": seg, "distance": m}, ...])
+    """
+    if len(waypoints) < 2:
+        return [], []
+
+    origin = f"{waypoints[0]['lat']},{waypoints[0]['lon']}"
+    destination = f"{waypoints[-1]['lat']},{waypoints[-1]['lon']}"
+    via_params = "".join(
+        f"&via={p['lat']},{p['lon']}"
+        for p in waypoints[1:-1]
+    )
+    url = (
+        f"https://router.hereapi.com/v8/routes"
+        f"?transportMode=car"
+        f"&origin={origin}"
+        f"&destination={destination}"
+        f"{via_params}"
+        f"&return=polyline,summary,travelSummary"
+        f"&departureTime={departure_iso}"
+        f"&apiKey={HERE_API_KEY}"
+    )
+    req = Request(url, headers={"User-Agent": "Vialseg-prototype/0.3"})
+    try:
+        with urlopen(req, timeout=30) as resp:
+            data = json.load(resp)
+    except (URLError, TimeoutError, OSError) as exc:
+        raise HTTPException(503, detail="No se pudo obtener la ruta de HERE. Reintente.") from exc
+
+    try:
+        route = data["routes"][0]
+    except (KeyError, IndexError) as exc:
+        raise HTTPException(503, detail="HERE no devolvió una ruta válida.") from exc
+
+    # Decodificar polyline flexible (HERE usa encoding propio)
+    geometry: list = []
+    for section in route.get("sections", []):
+        poly = section.get("polyline", "")
+        # HERE usa Flexible Polyline encoding; decodificamos manualmente
+        geometry.extend(_decode_here_polyline(poly))
+
+    legs = [
+        {
+            "duration": sec.get("travelSummary", {}).get("duration", 0),
+            "distance": sec.get("travelSummary", {}).get("length", 0),
+        }
+        for sec in route.get("sections", [])
+    ]
+    return geometry, legs
+
+
+def _decode_here_polyline(encoded: str) -> list:
+    """Decodifica HERE Flexible Polyline encoding a lista de [lon, lat]."""
+    if not encoded:
+        return []
+    # Tabla de caracteres válidos en HERE Flexible Polyline
+    DECODE_TABLE = {c: i for i, c in enumerate("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")}
+    result, lat, lng = [], 0, 0
+    i = 0
+    # Saltar cabecera (primer carácter = versión, segundo = precisión y tipo)
+    header_len = 2
+    i += header_len
+    precision = 5  # HERE usa 5 dígitos de precisión por defecto
+    factor = 10 ** precision
+
+    def decode_value(pos: int) -> tuple[int, int]:
+        result_val, shift, delta = 0, 0, 0
+        while pos < len(encoded):
+            c = encoded[pos]
+            pos += 1
+            val = DECODE_TABLE.get(c, 0)
+            delta |= (val & 0x1F) << shift
+            shift += 5
+            if val < 0x20:
+                break
+        return (-(delta >> 1) if delta & 1 else delta >> 1), pos
+
+    try:
+        while i < len(encoded):
+            dlat, i = decode_value(i)
+            dlng, i = decode_value(i)
+            lat += dlat
+            lng += dlng
+            result.append([round(lng / factor, 6), round(lat / factor, 6)])
+    except Exception:
+        return []
+    return result
 
 # Esquema auditable de ponderacion. Los tres primeros criterios construyen
 # el beneficio de resolver el ticket; cercania y jornada definen su inclusion.
@@ -110,7 +258,7 @@ class RouteRequest(BaseModel):
 
 @lru_cache(maxsize=32)
 def _road_json(path: str, time_bucket: int) -> dict:
-    """Cache breve y solicitudes serializadas para el servidor de demostracion."""
+    """Cache breve y solicitudes serializadas para el servidor OSRM de demostracion."""
     global _last_road_request
     with _road_lock:
         sleep(max(0, 1.1 - (monotonic() - _last_road_request)))
@@ -132,7 +280,17 @@ def road_data(service: str, points: list[dict], options: str) -> dict:
     return _road_json(f"/{service}/v1/driving/{coordinates}?{options}", int(monotonic() // 600))
 
 
-def road_matrix(points: list[dict]) -> tuple[list, list]:
+def road_matrix(points: list[dict], departure_iso: str | None = None) -> tuple[list, list]:
+    """Matriz de tiempos y distancias entre todos los puntos.
+
+    Con HERE_API_KEY usa HERE Matrix API con trafico real segun departure_iso.
+    Sin clave usa OSRM (tiempos estaticos sin trafico).
+    """
+    if HERE_API_KEY:
+        dep = departure_iso or datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+        return _here_matrix(points, dep)
+
+    # Fallback: OSRM
     data = road_data("table", points, "annotations=duration,distance")
     size = len(points)
     try:
@@ -144,7 +302,7 @@ def road_matrix(points: list[dict]) -> tuple[list, list]:
                 raise ValueError("Valor vial invalido")
         return durations, distances
     except (KeyError, TypeError, ValueError) as exc:
-        raise HTTPException(503, detail="El proveedor devolvió una matriz vial inválida.") from exc
+        raise HTTPException(503, detail="El proveedor devolvio una matriz vial invalida.") from exc
 
 
 def tier_factor(value: float, bands: list[tuple[float, float]]) -> float:
@@ -214,31 +372,49 @@ def choose_order(nodes: list[dict], durations: list, distances: list, budget: in
     return list(best)
 
 
-def build_route(nodes: list[dict], start_time: str, max_minutes: int, matrix=None) -> dict:
+def build_route(nodes: list[dict], start_time: str, max_minutes: int, matrix=None, start_date: str | None = None) -> dict:
     if isinstance(max_minutes, bool) or not isinstance(max_minutes, int) or max_minutes < 60:
         raise HTTPException(422, detail="La jornada debe estar al menos 60 minutos")
     try:
         current_time = datetime.strptime(start_time, "%H:%M")
     except (ValueError, TypeError) as exc:
         raise HTTPException(422, detail="start_time debe tener formato HH:MM") from exc
+
+    # Construir ISO de salida combinando fecha (o hoy) con hora de inicio
+    try:
+        day_str = start_date or date.today().isoformat()
+        departure_iso = f"{day_str}T{start_time}:00"
+    except Exception:
+        departure_iso = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+
     points = [BASE, *nodes]
-    durations, distances = matrix if matrix is not None else road_matrix(points)
+    durations, distances = matrix if matrix is not None else road_matrix(points, departure_iso)
     order = choose_order(nodes, durations, distances, max_minutes)
     route, elapsed, total_km, total_value = [], 0, 0.0, 0.0
     geometry, legs = [], []
+
     if order:
-        mapped = road_data("route", [BASE, *(points[i] for i in order), BASE],
-                           "overview=full&geometries=geojson&continue_straight=false")
-        try:
-            mapped_route = mapped["routes"][0]
-            legs = mapped_route["legs"]
-            geometry = mapped_route["geometry"]["coordinates"]
-            if len(legs) != len(order) + 1 or len(geometry) < 2:
-                raise ValueError("Recorrido incompleto")
-            if any(not isfinite(leg[k]) or leg[k] < 0 for leg in legs for k in ("duration", "distance")):
-                raise ValueError("Tramo invalido")
-        except (KeyError, IndexError, TypeError, ValueError) as exc:
-            raise HTTPException(503, detail="El proveedor devolvió un recorrido inválido.") from exc
+        waypoints = [BASE, *(points[i] for i in order), BASE]
+        if HERE_API_KEY:
+            # HERE Routes API: geometría y tiempos por tramo con tráfico real
+            geometry, legs = _here_route_geometry(waypoints, departure_iso)
+            if len(legs) != len(order) + 1:
+                raise HTTPException(503, detail="HERE devolvio un recorrido con tramos incorrectos.")
+        else:
+            # Fallback OSRM
+            mapped = road_data("route", waypoints,
+                               "overview=full&geometries=geojson&continue_straight=false")
+            try:
+                mapped_route = mapped["routes"][0]
+                legs = mapped_route["legs"]
+                geometry = mapped_route["geometry"]["coordinates"]
+                if len(legs) != len(order) + 1 or len(geometry) < 2:
+                    raise ValueError("Recorrido incompleto")
+                if any(not isfinite(leg[k]) or leg[k] < 0 for leg in legs for k in ("duration", "distance")):
+                    raise ValueError("Tramo invalido")
+            except (KeyError, IndexError, TypeError, ValueError) as exc:
+                raise HTTPException(503, detail="El proveedor devolvio un recorrido invalido.") from exc
+
     for index, dest in enumerate(order):
         node, leg = points[dest], legs[index]
         km, go = leg["distance"] / 1000, ceil(leg["duration"] / 60)
@@ -262,11 +438,12 @@ def build_route(nodes: list[dict], start_time: str, max_minutes: int, matrix=Non
     # La geometria final puede diferir de la matriz: nunca publicar una jornada excedida.
     if elapsed > max_minutes:
         raise HTTPException(503, detail="El recorrido final supera la jornada. Reintente con menos equipos.")
+    provider = "HERE / tráfico en tiempo real" if HERE_API_KEY else "OSRM / OpenStreetMap"
     return {"base": BASE, "stops": route, "unassigned": [n for i, n in enumerate(nodes, 1) if i not in order],
             "total_km": round(total_km, 1), "total_minutes": elapsed,
             "return_time": (current_time + timedelta(minutes=elapsed)).strftime("%H:%M"),
             "return_travel_minutes": return_min, "return_distance_km": round(return_km, 1),
-            "geometry": geometry, "routing_provider": "OSRM / OpenStreetMap", "live_traffic": False,
+            "geometry": geometry, "routing_provider": provider, "live_traffic": bool(HERE_API_KEY),
             "sla_value": round(total_value, 1), "service_minutes": SERVICE_MINUTES,
             "scoring_rules": SCORING_RULES}
 
@@ -295,7 +472,9 @@ def build_plan(nodes: list[dict], start_time: str, max_minutes: int, start_date:
         raise HTTPException(422, detail="La fecha debe tener formato AAAA-MM-DD") from exc
     if not nodes:
         raise HTTPException(400, detail="No hay radares seleccionados")
-    all_durations, all_distances = road_matrix([BASE, *nodes])
+    # La matriz inicial usa la hora de salida del primer día; jornadas siguientes recalculan con HERE
+    departure_iso_day0 = f"{day.isoformat()}T{start_time}:00"
+    all_durations, all_distances = road_matrix([BASE, *nodes], departure_iso_day0)
     remaining, days, offset = nodes.copy(), [], 0
     indices = {n['id']: i for i, n in enumerate(nodes, 1)}
     while remaining:
@@ -304,17 +483,18 @@ def build_plan(nodes: list[dict], start_time: str, max_minutes: int, start_date:
                        for values in (all_durations, all_distances))
         # El SLA refleja las horas adicionales de espera, sin modificar los datos originales.
         aged = [{**n, 'lead_hours': n['lead_hours'] + 24 * offset} for n in remaining]
-        route = build_route(aged, start_time, max_minutes, matrix)
+        day_str = (day + timedelta(days=offset)).isoformat()
+        route = build_route(aged, start_time, max_minutes, matrix, start_date=day_str)
         if not route['stops']:
             break
-        route['date'] = (day + timedelta(days=offset)).isoformat()
+        route['date'] = day_str
         days.append(route)
         visited = {n['id'] for n in route['stops']}
         remaining = [n for n in remaining if n['id'] not in visited]
         offset += 1
     return {'start_date': day.isoformat(), 'start_time': start_time, 'end_time': (datetime.strptime(start_time, '%H:%M') + timedelta(minutes=max_minutes)).strftime('%H:%M'), 'days': days,
             'created_at': datetime.now().isoformat(timespec='seconds'),
-            'unscheduled': [{**n, 'reason': 'Sin camino viable o no cabe con ingreso, atención y regreso en una jornada.'}
+            'unscheduled': [{**n, 'reason': 'Sin camino viable o no cabe con ingreso, atencion y regreso en una jornada.'}
                             for n in remaining],
             'deferred_count': sum(len(d['stops']) for d in days[1:]),
             'entry_minutes': ENTRY_MINUTES, 'service_minutes': SERVICE_MINUTES,
