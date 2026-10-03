@@ -7,10 +7,10 @@ const source = fs.readFileSync(path.join(__dirname, '../app.py'), 'utf8');
 const logic = source.slice(source.indexOf("const INSPECTION_KEY="), source.indexOf('async function initialize()'));
 let saved = null, fail = false;
 const elements = Object.fromEntries(['radarSelect', 'checks', 'timerBtn', 'timer', 'inspectionMessage',
-    'checkVisual', 'checkCalibration', 'checkPhoto', 'evidencePreview', 'evidenceFile', 'evidenceVideo', 'closure', 'problem', 'work', 'parts', 'notes', 'result', 'reason', 'reasonWrap', 'workDetail', 'reasonDetail', 'partsWrap', 'workDetailWrap', 'reasonDetailWrap'].map(id => [id, { value: '', textContent: '', pause(){} }]));
+    'checkVisual', 'checkCalibration', 'checkPhoto', 'evidencePreview', 'evidenceFile', 'evidenceVideo', 'closure', 'problem', 'work', 'parts', 'notes', 'result', 'reason', 'reasonWrap', 'workDetail', 'reasonDetail', 'partsWrap', 'workDetailWrap', 'reasonDetailWrap', 'paramsOverlay'].map(id => [id, { value: '', textContent: '', pause(){}, addEventListener(){} }]));
 const context = vm.createContext({
     console, Date, crypto:require('node:crypto').webcrypto,
-    document: {querySelectorAll:()=>[], querySelector: id => elements[id.slice(1)], getElementById: id => elements[id]},
+    document: {querySelectorAll:()=>[], querySelector: id => elements[id.slice(1)], getElementById: id => elements[id], addEventListener(){}},
     localStorage: {
         setItem: (_, value) => { if (fail) throw new Error('Storage full'); saved = value; },
         getItem: () => saved,
