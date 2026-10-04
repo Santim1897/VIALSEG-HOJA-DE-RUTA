@@ -320,7 +320,6 @@ export default function ConductorApp() {
             <section className="rounded-3xl bg-noche-2 p-6 text-center ring-1 ring-white/10">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-lima">{plan ? "Recorrido completo" : "Sin recorrido"}</p>
               <h1 className="mt-2 text-2xl font-semibold">{plan ? "No te quedan visitas" : "Se calcula cuando haya señal"}</h1>
-              {plan && <a href={navegar(camioneta.base)} target="_blank" rel="noreferrer" className="mt-6 flex h-14 items-center justify-center rounded-2xl bg-white/10 font-semibold">Volver a {camioneta.base.nombre}</a>}
               {plan && <button onClick={() => setHoja("finalizar")} className="mt-3 h-14 w-full rounded-2xl bg-lima font-semibold text-noche">Finalizar jornada</button>}
             </section>
           )}
@@ -435,7 +434,6 @@ function PestanaRuta({ estado }: { estado: Estado }) {
         <MapaRutaDinamico
           geometria={plan?.geometria ?? []}
           color={camioneta.color}
-          base={camioneta.base}
           posicion={jornada.posicion}
           paradas={[
             ...jornada.visitados.filter((id) => countries.some((k) => k.id === id)).map((id) => ({ lat: c(id).lat, lon: c(id).lon, orden: 0, hecho: true })),

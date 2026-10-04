@@ -23,7 +23,7 @@ Dónde está cada cosa: la fórmula del premio en `lib/premio.ts`; los pesos en 
 
 ## 2. Ruteo de una camioneta (`ruteo.py`)
 
-Nodos: 0 = posición actual, 1..n = countries asignados con fallas, n+1 = base. dᵢⱼ = minutos de manejo (con tráfico si hay Google), T = minutos que quedan de jornada.
+Nodos: 0 = posición actual (GPS), 1..n = countries asignados con fallas, n+1 = fin del recorrido (nodo ficticio: el recorrido termina en la última visita, sin volver a una base). dᵢⱼ = minutos de manejo (con tráfico si hay Google), T = minutos que quedan de jornada.
 
 **Variables:** xᵢⱼ ∈ {0,1} (de i va a j), vⱼ ∈ {0,1} (se visita j), tⱼ ≥ 0 (minuto de llegada a j).
 
@@ -39,7 +39,7 @@ premio de lo atendido − castigo por atender tarde lo urgente (u = 0,5) − cos
 
 ```
 Σⱼ x₀ⱼ = 1                              sale una vez de donde está
-Σᵢ xᵢ,ₙ₊₁ = 1                            termina en la base
+Σᵢ xᵢ,ₙ₊₁ = 1                            termina después de la última visita
 Σᵢ xᵢⱼ = vⱼ = Σₖ xⱼₖ                     entra y sale de cada country visitado
 tⱼ ≥ tᵢ + sᵢ + dᵢⱼ − Mᵢⱼ(1 − xᵢⱼ)        tiempos encadenados (MTZ, sin subrecorridos)
 tⱼ ≤ T·vⱼ ,  tₙ₊₁ ≤ T                     no pasarse de la jornada
@@ -59,7 +59,7 @@ Adaptación del modelo de **alocación de demanda por maximización de beneficio
 | Planta i, capacidad Kᵢ | Camioneta i, minutos de jornada × 0,85 (holgura para traslados entre countries) |
 | Costo fijo fᵢ | Costo de sacar la camioneta (0 por defecto: salen todas) |
 | Mercado j, precio pⱼ | Country con fallas, premio |
-| Costo cᵢⱼ | Minutos desde la base de i hasta j × costo por minuto |
+| Costo cᵢⱼ | Minutos desde la ubicación de la camioneta i (o la sede) hasta j × costo por minuto |
 
 ```
 max  Σᵢⱼ pⱼ·xᵢⱼ − Σᵢ fᵢ·yᵢ − c·Σᵢⱼ dᵢⱼ·xᵢⱼ
@@ -76,4 +76,4 @@ Es un esquema "primero agrupar, después rutear": la asignación aproxima el man
 - **Tiempo de respuesta**: KPI "tiempo caído promedio" y "tiempo de respuesta" en el panel.
 - **Visibilidad de la orden**: estado de cada falla y posición de cada camioneta en tiempo real.
 - **Integración de decisiones ya tomadas** (diapositiva 51): destino fijado por el conductor, destino forzado por el admin y countries ya atendidos no se cambian.
-- **Arquetipo de red**: servicio desde una base (sede de San Isidro) con "última milla" propia (diapositivas 26-29).
+- **Arquetipo de red**: servicio con "última milla" propia (diapositivas 26-29); las camionetas operan desde donde están y la sede es el punto fijo de referencia.

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAdmin, useAsignadoHoy } from "@/components/admin/datos";
 import { Encabezado } from "@/components/admin/Shell";
 import MapaDinamico from "@/components/MapaDinamico";
@@ -14,6 +14,11 @@ export default function EnVivo() {
   const [visibles, setVisibles] = useState<Record<string, boolean>>({});
   const [forzar, setForzar] = useState<{ cam: string; country: string } | null>(null);
   const [calculando, setCalculando] = useState<string | null>(null);
+  const [ahora, setAhora] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setAhora(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
   const e = estado!;
   const nombre = (id?: string | null) => e.countries.find((c) => c.id === id)?.nombre ?? "";
   const conductores = useMemo(
@@ -22,6 +27,20 @@ export default function EnVivo() {
   );
   const proveedor = Object.values(e.planes)[0]?.proveedor;
   const k = e.kpis;
+
+  const actualizarTodo = async () => {
+    setCalculando("todas");
+    try {
+      const r = await accion<{ recalculadas: number }>({ accion: "recalcular_todas" });
+      setAhora(Date.now());
+      avisar(r.recalculadas ? `Recorridos actualizados (${r.recalculadas} ${r.recalculadas === 1 ? "camioneta" : "camionetas"} en ruta)` : "Datos actualizados. No hay camionetas en ruta.");
+    } catch (err) {
+      avisar(err instanceof Error ? err.message : "Error");
+      await cargar();
+    } finally {
+      setCalculando(null);
+    }
+  };
 
   const recalcular = async (cam: string) => {
     setCalculando(cam);
@@ -39,7 +58,7 @@ export default function EnVivo() {
       <Encabezado
         titulo="Operación en vivo"
         descripcion={proveedor ? `Tiempos de viaje: ${proveedor}` : undefined}
-        acciones={<Boton variante="secundario" onClick={cargar}>Actualizar</Boton>}
+        acciones={<Boton variante="secundario" onClick={actualizarTodo} disabled={!!calculando}>{calculando === "todas" ? "Actualizando…" : "Actualizar recorridos"}</Boton>}
       />
 
       <section className="mb-5 grid grid-cols-3 gap-2 sm:gap-3 xl:grid-cols-6">
@@ -144,7 +163,10 @@ export default function EnVivo() {
                     ) : (
                       <p className="text-gris">{j.estado === "pendiente" ? "Espera que el conductor inicie la jornada" : plan ? "Sin visitas pendientes" : "Sin ruta calculada"}</p>
                     )}
-                    {plan && <p className="tabular mt-0.5 text-xs text-gris">{plan.paradas.length} paradas · {plan.kmTotales} km · {Math.round(plan.minutosTotales / 6) / 10} h · actualizada {hora(plan.creadoAt)}</p>}
+                    {plan && <p className="tabular mt-0.5 text-xs text-gris">{plan.paradas.length} paradas · {plan.kmTotales} km · {Math.round(plan.minutosTotales / 6) / 10} h · calculado {hora(plan.creadoAt)}</p>}
+                    {plan && j.estado === "activa" && ahora - new Date(plan.creadoAt).getTime() > e.parametros.recalculoMin * 2 * 60_000 && (
+                      <p className="mt-1.5 text-xs font-medium text-amber-700">Recorrido desactualizado: las horas pueden no ser reales. Tocá Recalcular.</p>
+                    )}
                     {plan?.sugerencia && <p className="mt-1.5 text-xs text-amber-800">{plan.sugerencia.mensaje}</p>}
                   </div>
 

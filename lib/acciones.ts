@@ -210,6 +210,11 @@ export async function accionAdmin(origin: string, actor: Usuario, cuerpo: Record
       await replanificarActivas(origin, [cam], "admin");
       return { ok: true };
     }
+    case "recalcular_todas": {
+      const activas = db.camionetas.filter((c) => c.activa !== false && jornadaDe(db, c.id).estado === "activa").map((c) => c.id);
+      await replanificarActivas(origin, activas, "admin");
+      return { ok: true, recalculadas: activas.length };
+    }
     case "planificar":
       return planificar(origin, String(cuerpo.camionetaId), "admin");
 
@@ -294,14 +299,12 @@ export async function accionAdmin(origin: string, actor: Usuario, cuerpo: Record
     // ---------------------------------------------------------- flota
     case "guardar_camioneta": {
       const existente = db.camionetas.find((c) => c.id === d.id);
-      const base = (d.base ?? {}) as Record<string, unknown>;
       const hhmm = /^([01]\d|2[0-3]):[0-5]\d$/;
       if (!hhmm.test(String(d.inicio)) || !hhmm.test(String(d.fin)) || String(d.inicio) >= String(d.fin)) falla("Revisá el horario de la jornada");
       const c: Camioneta = {
         ...(existente ?? { id: nuevoId("c"), activa: true }),
         nombre: texto(d.nombre, "el nombre", 40), patente: String(d.patente ?? "").trim().toUpperCase(),
         color: /^#[0-9a-f]{6}$/i.test(String(d.color)) ? String(d.color) : "#00a5d5",
-        base: { nombre: texto(base.nombre, "el nombre de la base", 60), ...coordenada(base.lat, base.lon) },
         inicio: String(d.inicio), fin: String(d.fin),
       };
       await s.guardar("camionetas", [c]);

@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip } from "react-leaflet";
 import { COLOR_GRAVEDAD, NOMBRE_GRAVEDAD, nombreProducto } from "@/lib/catalogo";
+import { SEDE } from "@/lib/sede";
 import { duracion, hora, horasDesde } from "@/lib/tiempo";
 import type { Camioneta, Country, Equipo, Falla, Plan, Posicion, TipoFalla } from "@/lib/types";
 
@@ -30,7 +31,6 @@ const iconoBase = icono(`<div style="width:16px;height:16px;transform:rotate(45d
 export default function Mapa({ datos, alto = 520 }: { datos: DatosMapa; alto?: number | string }) {
   const { countries, fallas, equipos, tipos, camionetas, planes, posiciones, asignado, visibles, conductores = {} } = datos;
   const abiertas = (id: string) => fallas.filter((f) => f.countryId === id && f.estado === "abierta");
-  const bases = [...new Map(camionetas.map((c) => [`${c.base.lat},${c.base.lon}`, c.base])).values()];
 
   const tactil = window.matchMedia("(pointer: coarse)").matches;
   return (
@@ -100,11 +100,9 @@ export default function Mapa({ datos, alto = 520 }: { datos: DatosMapa; alto?: n
         }),
       )}
 
-      {bases.map((b) => (
-        <Marker key={b.nombre} position={[b.lat, b.lon]} icon={iconoBase}>
-          <Tooltip direction="top">{b.nombre}</Tooltip>
-        </Marker>
-      ))}
+      <Marker position={[SEDE.lat, SEDE.lon]} icon={iconoBase} zIndexOffset={800}>
+        <Tooltip direction="top">{`${SEDE.nombre} · ${SEDE.direccion}`}</Tooltip>
+      </Marker>
 
       {camionetas.map((c) => {
         const pos = posiciones[c.id];

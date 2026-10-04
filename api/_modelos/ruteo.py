@@ -5,9 +5,10 @@ está escrita como programación lineal entera con OR-Tools + SCIP (resolver_pli
 para mostrar el modelo y verificar resultados. Ambas maximizan el mismo objetivo.
 
 Decide qué countries visitar y en qué orden, desde la posición actual del conductor
-hasta volver a su base, dentro del tiempo que le queda de jornada.
+y termina en la última visita, dentro del tiempo que le queda de jornada.
 
-Índices: 0 = posición actual, 1..n = countries asignados, n+1 = base (fin de jornada).
+Índices: 0 = posición actual (GPS), 1..n = countries asignados, n+1 = fin del recorrido
+(nodo ficticio: llegar cuesta 0 desde cualquier country, el recorrido no vuelve a una base).
 
 Variables
     x[i,j] ∈ {0,1}  1 si después de i va directo a j
@@ -20,7 +21,7 @@ Objetivo (maximizar)
 
 Restricciones
     Σ_j x[0,j] = 1                    sale una vez de la posición actual
-    Σ_i x[i,n+1] = 1                  termina una vez en la base
+    Σ_i x[i,n+1] = 1                  termina una vez (después de la última visita)
     Σ_i x[i,j] = v_j = Σ_k x[j,k]     entra y sale de cada country visitado
     t_j ≥ t_i + s_i + d_ij − M_ij(1 − x_ij) tiempos encadenados (elimina subrecorridos, MTZ)
     t_j ≤ T·v_j ,  t_{n+1} ≤ T          no pasarse de la jornada
@@ -36,7 +37,7 @@ from ortools.linear_solver import pywraplp
 def resolver_pli(datos: dict) -> dict:
     """Programación lineal entera (OR-Tools + SCIP)."""
     nodos = datos["countries"]  # [{id, premio, servicio}]
-    d = datos["tiempos"]  # matriz (n+2)x(n+2) en minutos: 0=inicio, 1..n, n+1=base
+    d = datos["tiempos"]  # matriz (n+2)x(n+2) en minutos: 0=inicio, 1..n, n+1=fin
     T = float(datos["disponible"])
     u = float(datos.get("peso_urgencia", 0.5))
     c = float(datos.get("costo_minuto", 0.05))
@@ -81,7 +82,7 @@ def resolver_pli(datos: dict) -> dict:
         sum(p[j] * v[j] for j in v)
         - u * sum((p[j] / T) * t[j] for j in v)
         - c * sum(d[i][j] * x[i, j] for i, j in arcos)
-        - 1e-4 * t[fin]  # desempate: volver a la base lo antes posible
+        - 1e-4 * t[fin]  # desempate: terminar lo antes posible
     )
     estado = solver.Solve()
     segundos = round(perf_counter() - inicio, 3)

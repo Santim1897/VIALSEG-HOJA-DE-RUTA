@@ -15,12 +15,12 @@ export default function Flota() {
 
   return (
     <>
-      <Encabezado titulo="Flota" descripcion="Camionetas, bases de salida y horario de jornada." acciones={<Boton onClick={() => setForm("nueva")}>Nueva camioneta</Boton>} />
+      <Encabezado titulo="Flota" descripcion="Camionetas y horario de jornada. Cada una sale desde donde esté (GPS)." acciones={<Boton onClick={() => setForm("nueva")}>Nueva camioneta</Boton>} />
       <Tarjeta>
         {e.todasLasCamionetas.length === 0 ? <Vacio titulo="No hay camionetas" /> : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
-              <thead className="bg-fondo"><tr><th className={th}>Camioneta</th><th className={th}>Base</th><th className={th}>Jornada</th><th className={th}>Conductor hoy</th><th className={th}>Estado</th><th className={th} /></tr></thead>
+              <thead className="bg-fondo"><tr><th className={th}>Camioneta</th><th className={th}>Jornada</th><th className={th}>Conductor hoy</th><th className={th}>Estado</th><th className={th} /></tr></thead>
               <tbody className="divide-y divide-linea">
                 {e.todasLasCamionetas.map((c) => (
                   <tr key={c.id} className={c.activa ? "" : "opacity-50"}>
@@ -30,7 +30,6 @@ export default function Flota() {
                         <div><p className="font-medium">{c.nombre}</p><p className="text-xs text-gris">{c.patente || "Sin patente cargada"}</p></div>
                       </div>
                     </td>
-                    <td className={td}>{c.base.nombre}</td>
                     <td className={`${td} tabular`}>{c.inicio} a {c.fin}</td>
                     <td className={td}>{conductorHoy(c.id) ?? <span className="text-gris">—</span>}</td>
                     <td className={td}>{c.activa ? <Etiqueta tono="verde">Activa</Etiqueta> : <Etiqueta>Fuera de servicio</Etiqueta>}</td>

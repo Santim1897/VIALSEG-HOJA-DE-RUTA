@@ -1,6 +1,6 @@
 # Vialseg · Hoja de ruta v2
 
-Sistema que le indica a cada conductor de Vialseg **a qué country ir después**, por cálculo y no por experiencia, y le da a la administración una vista de todas las camionetas. Todas salen de la sede de Vialseg (Martín Lezica 3093, San Isidro). Proyecto de consultoría de la materia Supply Chain (ITBA), unidad *Redes de Distribución*.
+Sistema que le indica a cada conductor de Vialseg **a qué country ir después**, por cálculo y no por experiencia, y le da a la administración una vista de todas las camionetas. Cada camioneta sale desde donde está (GPS); la sede de Vialseg (Martín Lezica 3093, San Isidro) se muestra siempre en el mapa. Proyecto de consultoría de la materia Supply Chain (ITBA), unidad *Redes de Distribución*.
 
 > Rama `v2/base-nueva`: reescritura completa. El prototipo anterior (un solo `app.py`) quedó en [`legacy/`](legacy/) como referencia. Hasta recibir los datos reales de Vialseg, el sistema arranca con datos de ejemplo (countries, equipos, fallas y conductores).
 
@@ -17,11 +17,11 @@ Ingreso único en `/login` con dos roles. Cada rol solo accede a su sección: lo
 
 | Sección | Para qué |
 |---|---|
-| En vivo | Mapa con los countries por gravedad, recorrido de cada camioneta en su color, posición, próximo destino, KPIs. Forzar el próximo destino (con confirmación) y recalcular |
+| En vivo | Mapa con los countries por gravedad, recorrido de cada camioneta en su color, posición, próximo destino, KPIs. "Actualizar recorridos" recalcula todas las camionetas en ruta (horas y tráfico); aviso si un recorrido quedó viejo. Forzar el próximo destino (con confirmación) |
 | Planificación | Para hoy o días próximos: qué conductor maneja cada camioneta y qué countries atiende. Si un día no se planificó, se propone el del último día (mismo conductor y countries con fallas pendientes). Se edita con **Editar plan**, se revisa el resumen de cambios y se confirma. "Sugerir distribución" usa el modelo de asignación. No deja quitar countries ya atendidos ni poner un conductor o un country en dos camionetas |
 | Fallas | Abiertas y resueltas, filtros, alta (country, equipo, tipo, gravedad), edición, resolver, reabrir, eliminar |
 | Countries y equipos | Alta, edición y baja de countries (ubicación con clic en el mapa, contacto, indicaciones para el conductor) y de sus equipos (producto, ubicación, n.º de serie, instalación). Ficha con fallas y visitas |
-| Flota | Camionetas: patente, color, base y horario de jornada; sacar de servicio |
+| Flota | Camionetas: patente, color y horario de jornada; sacar de servicio |
 | Usuarios | Conductores (PIN) y administradores (contraseña): alta, edición, resetear acceso, desactivar |
 | Análisis | Tasa de falla por producto |
 | Auditoría | Toda acción con usuario y hora, cada ruta calculada y cada visita (con foto) |

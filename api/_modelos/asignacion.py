@@ -6,7 +6,7 @@ Redes de Distribución (Chopra & Meindl, cap. 5), adaptado:
     planta i      → camioneta i          capacidad K_i → minutos de jornada
     mercado j     → country con fallas   precio p_j    → premio de reparar ese country
     costo fijo f_i → costo de sacar la camioneta ese día
-    costo c_ij    → minutos de manejo desde la base de la camioneta al country × costo por minuto
+    costo c_ij    → minutos de manejo desde donde está la camioneta (o la sede) al country × costo por minuto
 
 Variables
     y[i]   ∈ {0,1}  1 si la camioneta i sale hoy
@@ -17,7 +17,7 @@ Objetivo (maximizar)
 
 Restricciones
     Σ_i x_ij ≤ 1                          cada country lo atiende como máximo una camioneta
-    Σ_j (s_j + d_ij)·x_ij ≤ K_i·y_i       no superar la jornada (aproximación: ida desde la base)
+    Σ_j (s_j + d_ij)·x_ij ≤ K_i·y_i       no superar la jornada (aproximación: ida desde la camioneta)
     x_ij = 1  para las decisiones ya tomadas por el administrador (no se cambian)
 
 La secuencia real de cada camioneta la resuelve después el modelo de ruteo
@@ -33,7 +33,7 @@ from ortools.linear_solver import pywraplp
 def resolver_asignacion(datos: dict) -> dict:
     camionetas = datos["camionetas"]  # [{id, capacidad, costo_fijo}]
     countries = datos["countries"]  # [{id, premio, servicio}]
-    d = datos["tiempos"]  # d[i][j] minutos base camioneta i → country j
+    d = datos["tiempos"]  # d[i][j] minutos desde la camioneta i → country j
     c = float(datos.get("costo_minuto", 0.05))
     fijos = datos.get("fijos", [])  # [{camioneta, country}]
 

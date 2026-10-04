@@ -1,5 +1,5 @@
 // Respaldo si el optimizador en Python no responde: elige en cada paso el country con mejor
-// premio por minuto que todavía permita volver a la base a tiempo. No garantiza el óptimo.
+// premio por minuto que todavía entre en la jornada. No garantiza el óptimo.
 interface Entrada {
   countries: { id: string; premio: number; servicio: number }[];
   tiempos: number[][];

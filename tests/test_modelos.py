@@ -11,7 +11,7 @@ import random  # noqa: E402
 
 
 def matriz(pos):
-    """Tiempos en minutos = distancia en una recta (punto 0 = inicio, último = base)."""
+    """Tiempos en minutos = distancia en una recta (punto 0 = inicio, último = fin del recorrido)."""
     return [[abs(a - b) for b in pos] for a in pos]
 
 

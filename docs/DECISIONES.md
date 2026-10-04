@@ -6,10 +6,11 @@ Qué se decidió, por qué y qué queda pendiente. Agregar una entrada por cada 
 
 | # | Decisión | Motivo |
 |---|---|---|
-| 27 | Las 3 camionetas salen de la sede: Martín Lezica 3093, Lomas de San Isidro (-34.49488, -58.54782) | Es la base real de Vialseg; la "Base Martínez" y la "Base Pilar" eran supuestos |
+| 27 | ~~Las 3 camionetas salen de la sede~~ (reemplazada por la #33) | — |
 | 28 | Tiempo por equipo con falla: 20 min en total, incluido el manejo dentro del barrio (antes 11 min); se mantiene el ingreso por guardia por country | Dato del equipo |
 | 29 | Se quita el modelo de centro de gravedad (ubicación óptima de la base) | La sede es fija: el análisis no aporta a la operación |
 | 30 | Cuadro "Cómo se decide el recorrido" en Configuración, con los valores vigentes | Que los criterios no queden solo en el código |
+| 33 | Sin bases por camioneta: cada una sale desde su GPS (o desde la sede si todavía no informó ubicación) y el recorrido termina en la última visita. La sede (Martín Lezica 3093, San Isidro) es la única ubicación fija y se muestra siempre en los mapas | Acercarse a la realidad: no inventar bases; las camionetas pueden empezar y terminar en cualquier lado |
 | 32 | Producción: Vercel (`vialseg-hoja-de-ruta.vercel.app`) + Supabase en São Paulo; contraseña inicial de admin y secreto de sesión como variables de entorno de Vercel | Datos persistentes y compartidos entre todos los usuarios |
 | 31 | Si un día no está planificado, cada camioneta arranca con el conductor del último día planificado y los countries que siguen con fallas abiertas; administración lo puede cambiar | Que nadie empiece el día sin recorrido. Pedido del equipo |
 

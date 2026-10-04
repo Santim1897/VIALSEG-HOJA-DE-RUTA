@@ -51,7 +51,7 @@ export default function Configuracion() {
                 ["Urgencia", "Penaliza dejar para el final a los countries de mayor prioridad.", `${p.pesoUrgencia} (0 a 1)`],
                 ["Tiempo de manejo entre countries", "Cada minuto de manejo resta. Con tráfico en vivo cuando está configurado el proveedor.", `${p.costoMinuto} puntos por minuto`],
                 ["Tiempo en cada country", "Ingreso por guardia + un tiempo fijo por cada equipo con falla (incluye el manejo dentro del barrio).", `ingreso del country + ${p.minutosPorFalla} min por equipo`],
-                ["Jornada", "El recorrido termina en la base dentro del horario de la camioneta; lo que no entra queda para otro día.", "Horario de cada camioneta (Flota)"],
+                ["Punto de partida y jornada", "Sale desde donde está la camioneta (GPS; si no hay, desde la sede) y la última visita tiene que terminar dentro del horario. Lo que no entra queda para otro día.", "Horario de cada camioneta (Flota)"],
               ].map(([c, d, v]) => (
                 <tr key={c}><td className={`${td} font-medium`}>{c}</td><td className={`${td} text-gris`}>{d}</td><td className={`${td} tabular whitespace-nowrap`}>{v}</td></tr>
               ))}

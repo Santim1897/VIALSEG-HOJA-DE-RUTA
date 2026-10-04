@@ -86,7 +86,6 @@ export interface Camioneta {
   nombre: string;
   patente: string;
   color: string;
-  base: Punto & { nombre: string };
   inicio: string; // "08:00"
   fin: string; // "17:00"
   activa: boolean;
@@ -94,11 +93,11 @@ export interface Camioneta {
 
 export interface Posicion extends Punto {
   at: string;
-  fuente: "gps" | "base" | "country";
+  fuente: "gps" | "sede" | "country";
 }
 
 export interface CacheMatriz {
-  ids: string[]; // ["inicio", ...countryIds, "base"]
+  ids: string[]; // ["inicio", ...countryIds]
   min: number[][];
   km: number[][];
   at: string;

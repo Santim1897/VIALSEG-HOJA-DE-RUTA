@@ -32,13 +32,11 @@ const COUNTRIES: [string, string, number, number, number][] = [
   ["Boulogne Golf", "San Isidro", -34.497, -58.573, 280000],
 ];
 
-// Sede de Vialseg: Martín Lezica 3093, Lomas de San Isidro (B1642GJA).
-const SEDE = { nombre: "Sede San Isidro", lat: -34.49488, lon: -58.54782 };
 
 export const CAMIONETAS: Camioneta[] = [
-  { id: "c1", nombre: "Camioneta 1", patente: "", color: "#00a5d5", base: SEDE, inicio: "08:00", fin: "17:00", activa: true },
-  { id: "c2", nombre: "Camioneta 2", patente: "", color: "#83c735", base: SEDE, inicio: "08:00", fin: "17:00", activa: true },
-  { id: "c3", nombre: "Camioneta 3", patente: "", color: "#f59e0b", base: SEDE, inicio: "08:00", fin: "17:00", activa: true },
+  { id: "c1", nombre: "Camioneta 1", patente: "", color: "#00a5d5", inicio: "08:00", fin: "17:00", activa: true },
+  { id: "c2", nombre: "Camioneta 2", patente: "", color: "#83c735", inicio: "08:00", fin: "17:00", activa: true },
+  { id: "c3", nombre: "Camioneta 3", patente: "", color: "#f59e0b", inicio: "08:00", fin: "17:00", activa: true },
 ];
 
 function usuario(id: string, nombre: string, rol: Usuario["rol"], secreto: string, extra: Partial<Usuario> = {}): Usuario {

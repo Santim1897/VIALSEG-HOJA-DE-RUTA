@@ -4,12 +4,13 @@ import { PARAMETROS_INICIALES } from "./catalogo";
 import { premioFaltante } from "./heuristica";
 import { valorar } from "./premio";
 import { fila, matriz, trazado, type Matriz } from "./rutas";
+import { SEDE } from "./sede";
 import { store } from "./store";
 import { aMinutos, hoy, minutosDelDia } from "./tiempo";
 import type { CacheMatriz, DB, Jornada, MotivoPlan, Parada, Plan, Posicion } from "./types";
 
 const VIGENCIA_MATRIZ_MS = 30 * 60_000;
-// La asignación aproxima el manejo con la ida desde la base: se deja 15% de la jornada para traslados entre countries.
+// La asignación aproxima el manejo con la ida desde la ubicación de la camioneta: se deja 15% de la jornada para traslados entre countries.
 const HOLGURA = 0.85;
 
 // Se completa con los valores iniciales por si la base tiene parámetros guardados de una versión anterior.
@@ -86,11 +87,12 @@ export async function planificar(origin: string, camionetaId: string, motivo: Mo
   const enSitio = jornada.enSitio && candidatos.includes(jornada.enSitio) ? jornada.enSitio : null;
   const desde: Posicion = enSitio
     ? { ...country(enSitio), at: ahora.toISOString(), fuente: "country" }
-    : pos ?? jornada.posicion ?? { lat: cam.base.lat, lon: cam.base.lon, at: ahora.toISOString(), fuente: "base" };
+    : pos ?? jornada.posicion ?? { lat: SEDE.lat, lon: SEDE.lon, at: ahora.toISOString(), fuente: "sede" };
 
   // Tiempos: matriz completa, o solo la fila desde la posición actual si la matriz guardada es reciente.
-  const ids = ["inicio", ...candidatos, "base"];
-  const puntos = [desde, ...candidatos.map(country), cam.base];
+  // El recorrido sale de donde está la camioneta y termina en la última visita (no vuelve a una base).
+  const ids = ["inicio", ...candidatos];
+  const puntos = [desde, ...candidatos.map(country)];
   const cache = jornada.matriz;
   let m: Matriz;
   if (motivo === "periodico" && cache && cache.ids.join() === ids.join() && Date.now() - new Date(cache.at).getTime() < VIGENCIA_MATRIZ_MS) {
@@ -106,9 +108,11 @@ export async function planificar(origin: string, camionetaId: string, motivo: Mo
   }
 
   const fijo = [jornada.forzado, enSitio, jornada.destinoFijo].find((x) => x && candidatos.includes(x)) ?? null;
+  // Nodo final ficticio: llegar a "fin de recorrido" no cuesta tiempo desde ningún punto.
+  const conFin = [...m.min.map((f) => [...f, 0]), m.min.map(() => 0).concat(0)];
   const entrada = {
     countries: candidatos.map((id) => ({ id, premio: val.get(id)!.premio, servicio: val.get(id)!.servicioMin })),
-    tiempos: m.min.map((f) => f.map((v) => Math.round(v * 10) / 10)),
+    tiempos: conFin.map((f) => f.map((v) => Math.round(v * 10) / 10)),
     disponible: disponible(cam.inicio, cam.fin),
     peso_urgencia: p.pesoUrgencia,
     costo_minuto: p.costoMinuto,
@@ -151,14 +155,14 @@ export async function planificar(origin: string, camionetaId: string, motivo: Mo
     });
     previo = k;
   }
-  const kmTotales = paradas.reduce((t, x) => t + x.kmDesdeAnterior, 0) + m.km[previo][ids.length - 1];
+  const kmTotales = paradas.reduce((t, x) => t + x.kmDesdeAnterior, 0);
 
   const plan: Plan = {
     id: `p${ahora.getTime()}_${camionetaId}`,
     jornadaId: jornada.id, camionetaId, fecha: jornada.fecha, creadoAt: ahora.toISOString(), motivo, desde,
     paradas, noVisitados: r.no_visitados, minutosTotales: r.minutos_totales, kmTotales: Math.round(kmTotales * 10) / 10,
     objetivo: r.objetivo, estado: r.estado, segundos: r.segundos, motor, proveedor: m.proveedor, conTrafico: m.conTrafico,
-    geometria: await trazado([desde, ...r.orden.map(country), cam.base]), sugerencia,
+    geometria: await trazado([desde, ...r.orden.map(country)]), sugerencia,
   };
   const nuevaCache: CacheMatriz = { ids, min: m.min, km: m.km, at: motivo === "periodico" && cache ? cache.at : ahora.toISOString(), proveedor: m.proveedor };
   await s.guardar("planes", [plan]);
@@ -173,7 +177,9 @@ export async function sugerirAsignacion(origin: string) {
   const val = valorar(db, p);
   const conFallas = db.countries.filter((c) => c.activo !== false && (val.get(c.id)?.fallas.length ?? 0) > 0);
   const camionetas = db.camionetas.filter((c) => c.activa !== false);
-  const m = await matriz([...camionetas.map((c) => c.base), ...conFallas]);
+  // Origen de cada camioneta: su última ubicación conocida de hoy, o la sede si todavía no informó.
+  const origenes = camionetas.map((c) => jornadaDe(db, c.id).posicion ?? SEDE);
+  const m = await matriz([...origenes, ...conFallas]);
   const n = camionetas.length;
   const fijos = camionetas.flatMap((cam) => {
     const j = jornadaDe(db, cam.id);

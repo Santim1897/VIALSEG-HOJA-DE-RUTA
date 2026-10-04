@@ -93,11 +93,10 @@ const COLORES = ["#00a5d5", "#83c735", "#f59e0b", "#a855f7", "#ef4444", "#14b8a6
 
 export function FormCamioneta({ camioneta, cerrar }: { camioneta?: Camioneta; cerrar: () => void }) {
   const { error, ocupado, guardar } = useGuardar(cerrar);
-  const [f, setF] = useState({ nombre: camioneta?.nombre ?? "", patente: camioneta?.patente ?? "", color: camioneta?.color ?? COLORES[0], inicio: camioneta?.inicio ?? "08:00", fin: camioneta?.fin ?? "17:00", baseNombre: camioneta?.base.nombre ?? "" });
-  const [pos, setPos] = useState<Punto | null>(camioneta ? { lat: camioneta.base.lat, lon: camioneta.base.lon } : null);
+  const [f, setF] = useState({ nombre: camioneta?.nombre ?? "", patente: camioneta?.patente ?? "", color: camioneta?.color ?? COLORES[0], inicio: camioneta?.inicio ?? "08:00", fin: camioneta?.fin ?? "17:00" });
   return (
-    <Modal abierto titulo={camioneta ? `Editar ${camioneta.nombre}` : "Nueva camioneta"} cerrar={cerrar} ancho="max-w-2xl"
-      pie={<Pie cerrar={cerrar} ocupado={ocupado} guardar={() => guardar({ accion: "guardar_camioneta", datos: { ...f, id: camioneta?.id, base: { nombre: f.baseNombre, lat: pos?.lat, lon: pos?.lon } } }, camioneta ? "Camioneta actualizada" : "Camioneta creada")} />}>
+    <Modal abierto titulo={camioneta ? `Editar ${camioneta.nombre}` : "Nueva camioneta"} cerrar={cerrar}
+      pie={<Pie cerrar={cerrar} ocupado={ocupado} guardar={() => guardar({ accion: "guardar_camioneta", datos: { ...f, id: camioneta?.id } }, camioneta ? "Camioneta actualizada" : "Camioneta creada")} />}>
       <div className="grid gap-3 sm:grid-cols-2">
         <Campo etiqueta="Nombre"><input className={campo} value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value })} placeholder="Ej.: Camioneta 4" /></Campo>
         <Campo etiqueta="Patente"><input className={campo} value={f.patente} onChange={(e) => setF({ ...f, patente: e.target.value })} placeholder="AB 123 CD" /></Campo>
@@ -108,11 +107,6 @@ export function FormCamioneta({ camioneta, cerrar }: { camioneta?: Camioneta; ce
             {COLORES.map((c) => <button key={c} type="button" aria-label={c} onClick={() => setF({ ...f, color: c })} className={`h-8 w-8 rounded-full ring-offset-2 ${f.color === c ? "ring-2 ring-noche" : ""}`} style={{ background: c }} />)}
           </div>
         </Campo>
-        <Campo etiqueta="Base (de dónde sale y adónde vuelve)" className="sm:col-span-2"><input className={campo} value={f.baseNombre} onChange={(e) => setF({ ...f, baseNombre: e.target.value })} placeholder="Ej.: Base Martínez" /></Campo>
-        <div className="sm:col-span-2">
-          <p className="mb-1 text-xs font-semibold text-gris">Ubicación de la base <span className="font-normal">— tocá el mapa</span></p>
-          <MapaSelectorDinamico valor={pos} elegir={setPos} />
-        </div>
       </div>
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
     </Modal>
