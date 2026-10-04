@@ -238,10 +238,10 @@ export default function ConductorApp() {
   const sugerido = plan?.sugerencia && !jornada.enSitio ? country(plan.sugerencia.countryId) : null;
 
   return (
-    <Pantalla {...encabezado} pestanas={jornada.estado === "activa" ? { actual: pestana, cambiar: setPestana } : undefined}>
+    <Pantalla {...encabezado} pestanas={{ actual: pestana, cambiar: setPestana }}>
       {error && <div className="mb-4 rounded-2xl bg-red-500/15 px-4 py-3 text-sm text-red-200">{error}</div>}
 
-      {jornada.estado === "pendiente" && (
+      {jornada.estado === "pendiente" && pestana === "ahora" && (
         <section className="mt-4">
           <p className="text-slate-400">{camioneta.nombre}{camioneta.patente && ` · ${camioneta.patente}`}</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">Hoy tenés {jornada.countries.length} {jornada.countries.length === 1 ? "country" : "countries"}</h1>
@@ -325,19 +325,21 @@ export default function ConductorApp() {
             </section>
           )}
 
-          <p className="mt-6 text-center text-xs text-slate-500">
-            <button onClick={async () => ejecutar({ accion: "recalcular", motivo: "manual", pos: await ubicacion() })} disabled={!!ocupado}>
-              {ocupado === "recalcular" || ocupado === "auto" ? "Actualizando recorrido…" : `Recorrido actualizado ${jornada.ultimoCalculo ? hora(jornada.ultimoCalculo) : "—"} · Actualizar`}
+          <div className="mt-6 flex items-center justify-between gap-3 rounded-2xl bg-white/5 px-4 py-3">
+            <span className="text-xs text-slate-400">Recorrido calculado {jornada.ultimoCalculo ? hora(jornada.ultimoCalculo) : "—"}</span>
+            <button onClick={async () => ejecutar({ accion: "recalcular", motivo: "manual", pos: await ubicacion() })} disabled={!!ocupado}
+              className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">
+              {ocupado === "recalcular" || ocupado === "auto" ? "Recalculando…" : "Recalcular recorrido"}
             </button>
-          </p>
+          </div>
         </>
       )}
 
-      {jornada.estado === "activa" && pestana === "ruta" && (
+      {pestana === "ruta" && (
         <PestanaRuta estado={estado} />
       )}
 
-      {jornada.estado === "activa" && pestana === "hoy" && (
+      {pestana === "hoy" && (
         <section>
           <h2 className="text-lg font-semibold">Tu día</h2>
           <div className="mt-3 grid grid-cols-3 gap-2 text-center">
@@ -354,11 +356,12 @@ export default function ConductorApp() {
               </li>
             ))}
           </ul>
-          <button onClick={() => setHoja("finalizar")} className="mt-8 h-12 w-full rounded-2xl bg-white/5 text-sm font-medium text-slate-300">Finalizar jornada</button>
+          {jornada.estado === "activa" && <button onClick={() => setHoja("finalizar")} className="mt-8 h-12 w-full rounded-2xl bg-white/5 text-sm font-medium text-slate-300">Finalizar jornada</button>}
+          {jornada.estado === "finalizada" && <button onClick={() => ejecutar({ accion: "reabrir" })} disabled={!!ocupado} className="mt-8 h-12 w-full rounded-2xl bg-white/5 text-sm font-medium text-slate-300">Reabrir jornada</button>}
         </section>
       )}
 
-      {jornada.estado === "finalizada" && (
+      {jornada.estado === "finalizada" && pestana === "ahora" && (
         <section className="mt-16 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-lima">Jornada finalizada</p>
           <h1 className="mt-3 text-3xl font-semibold">{jornada.visitados.length} {jornada.visitados.length === 1 ? "country atendido" : "countries atendidos"}</h1>
@@ -388,7 +391,21 @@ export default function ConductorApp() {
           <BotonGrande className="mt-6" onClick={() => { setHoja(null); ejecutar({ accion: "finalizar" }); }}>Finalizar</BotonGrande>
         </Hoja>
       )}
-      {hoja === "menu" && <HojaMenu cerrar={() => setHoja(null)} salir={salir} />}
+      {hoja === "menu" && (
+        <HojaMenu
+          cerrar={() => setHoja(null)}
+          salir={salir}
+          acciones={[
+            ...(jornada.estado === "activa" ? [
+              { texto: "Recalcular recorrido", hacer: async () => { setHoja(null); await ejecutar({ accion: "recalcular", motivo: "manual", pos: await ubicacion() }); } },
+              { texto: "Ver recorrido del día", hacer: () => { setHoja(null); setPestana("ruta"); } },
+              { texto: "Finalizar jornada", hacer: () => setHoja("finalizar") },
+            ] : []),
+            ...(jornada.estado === "pendiente" ? [{ texto: "Iniciar jornada", hacer: async () => { setHoja(null); await ejecutar({ accion: "iniciar", pos: await ubicacion() }); } }] : []),
+            ...(jornada.estado === "finalizada" ? [{ texto: "Reabrir jornada", hacer: () => { setHoja(null); ejecutar({ accion: "reabrir" }); } }] : []),
+          ]}
+        />
+      )}
     </Pantalla>
   );
 }
@@ -398,8 +415,9 @@ function PestanaRuta({ estado }: { estado: Estado }) {
   const { jornada, plan, countries, camioneta } = estado;
   if (!jornada || !camioneta) return null;
   const c = (id: string) => countries.find((x) => x.id === id)!;
-  const pendientes = plan?.paradas ?? [];
   const salteado = (id: string) => jornada.salteados.find((s) => s.countryId === id);
+  const pendientes: { countryId: string; eta?: string }[] = plan?.paradas
+    ?? jornada.countries.filter((id) => !jornada.visitados.includes(id) && !salteado(id)).map((id) => ({ countryId: id }));
   const sinLugar = plan?.noVisitados ?? [];
   const orden = [
     ...jornada.visitados.map((id) => ({ id, estado: "hecho" as const })),
@@ -412,6 +430,7 @@ function PestanaRuta({ estado }: { estado: Estado }) {
   let n = 0;
   return (
     <section>
+      {!plan && <p className="mb-3 text-sm text-slate-400">El orden de visita se calcula al iniciar la jornada, desde donde estés.</p>}
       <div className="h-[42dvh] overflow-hidden rounded-3xl ring-1 ring-white/10">
         <MapaRutaDinamico
           geometria={plan?.geometria ?? []}
@@ -526,10 +545,13 @@ function Hoja({ titulo, cerrar, children }: { titulo: string; cerrar: () => void
   );
 }
 
-function HojaMenu({ cerrar, salir }: { cerrar: () => void; salir: () => void }) {
+function HojaMenu({ cerrar, salir, acciones = [] }: { cerrar: () => void; salir: () => void; acciones?: { texto: string; hacer: () => void }[] }) {
   return (
     <Hoja titulo="Menú" cerrar={cerrar}>
       <div className="mt-5 space-y-2">
+        {acciones.map((a) => (
+          <button key={a.texto} onClick={a.hacer} className="h-14 w-full rounded-2xl bg-white/5 px-4 text-left font-medium">{a.texto}</button>
+        ))}
         <button onClick={() => window.location.reload()} className="h-14 w-full rounded-2xl bg-white/5 px-4 text-left font-medium">Actualizar datos</button>
         <button onClick={salir} className="h-14 w-full rounded-2xl bg-white/5 px-4 text-left font-medium text-red-300">Cerrar sesión</button>
       </div>
