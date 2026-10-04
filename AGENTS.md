@@ -4,7 +4,7 @@ Estas reglas aplican a cualquier persona o agente que modifique este repositorio
 
 ## Objetivo
 
-Mantener y mejorar el prototipo de optimización de hojas de ruta para mantenimiento de cinemómetros de Vialseg en barrios privados de Pilar y Zona Norte.
+Sistema de ruteo de las camionetas de mantenimiento de Vialseg en barrios privados de Pilar y Zona Norte: vista de administración, vista de conductor y modelos de optimización. Ver `README.md`, `docs/MODELOS.md` y `docs/DECISIONES.md`.
 
 ## Reglas de colaboración
 
@@ -15,22 +15,24 @@ Mantener y mejorar el prototipo de optimización de hojas de ruta para mantenimi
 5. Publicar la rama y abrir un Pull Request hacia `main`, compartir el enlace y esperar la aprobación de @Santim1897. Solo el responsable integra los cambios desde GitHub; los agentes no deben aprobar, integrar ni habilitar auto-merge por iniciativa propia.
 6. Mantener los commits pequeños, explicativos y vinculados a una única intención.
 
-## Reglas técnicas
+## Reglas técnicas (v2)
 
-1. `app.py` contiene backend, algoritmo y visualización. Mantener el proyecto ejecutable localmente.
-2. La ruta debe salir y regresar a la base de Martínez dentro de la duración de jornada configurada.
-3. Cada radar atendido consume 11 minutos de servicio, además del viaje y 15 minutos de ingreso por entrada al barrio. Programar los pendientes en jornadas sucesivas; no asignar fecha a una visita sin jornada viable.
-4. No modificar factores de ponderación, datos de prueba o restricciones sin actualizar `README.md`.
-5. Los datos de barrios y coordenadas son simulados: no presentarlos como ubicaciones operativas exactas.
-6. Evitar agregar dependencias de producción sin justificarlo en el Pull Request.
-7. Nunca incluir credenciales, tokens, archivos `.env`, paquetes locales o datos privados en Git.
+1. Stack: Next.js 16 (App Router, TypeScript, Tailwind 4) + optimizador en Python (`api/`, FastAPI + OR-Tools). Next.js 16 tiene cambios incompatibles: antes de usar una API de Next, leer la guía en `node_modules/next/dist/docs/` (por ejemplo, `params` y `cookies` son asíncronos y `middleware` pasó a llamarse `proxy`).
+2. Toda lectura/escritura de datos pasa por `lib/store.ts`. No acceder a Supabase desde el navegador; la `service_role` es solo de servidor.
+3. Los datos de countries, equipos, coordenadas y fallas son **ficticios**: no presentarlos como reales.
+4. La ruta de cada camioneta sale de su posición actual y vuelve a su base dentro de la jornada; 15 min de ingreso por country y 11 min por falla (editables en Parámetros).
+5. No cambiar pesos, gravedades o restricciones sin actualizar `README.md`, `docs/MODELOS.md` y `docs/DECISIONES.md`.
+6. Cada decisión nueva va como entrada en `docs/DECISIONES.md`. Mantener `README.md` y este archivo al día con cada cambio.
+7. Evitar dependencias nuevas sin justificarlas en el Pull Request. Nunca subir `.env.local`, `.data/`, `.venv/` ni claves.
 
 ## Validación mínima antes de proponer un Pull Request
 
-1. Iniciar la aplicación localmente con `iniciar_local.cmd` o `uvicorn app:app --reload`.
-2. Confirmar que `GET /api/radars` responde correctamente.
-3. Confirmar que `POST /api/route` devuelve un plan con jornadas válidas que no superan la duración configurada y que `GET /api/plan` conserva la programación.
-4. Confirmar que el mapa muestra los marcadores, la línea de ruta y el itinerario.
+1. `.venv\Scripts\python -m unittest discover tests` sin errores.
+2. `npx tsc --noEmit` y `npm run lint` sin errores.
+3. Con el optimizador (`uvicorn api.index:app --port 8000`) y `npm run dev` corriendo, en http://localhost:3000:
+   - `/admin` muestra el mapa, los countries por gravedad y los recorridos por color.
+   - `/conductor/c1`: Iniciar jornada → Llegué → Terminé recalcula desde ese country.
+   - "Sugerir con el modelo" en Asignación devuelve una propuesta.
 
 ## Forma de trabajar de los agentes
 
@@ -44,3 +46,13 @@ Mantener y mejorar el prototipo de optimización de hojas de ruta para mantenimi
 `.github/CODEOWNERS` designa a @Santim1897 como responsable de todos los archivos. Para que su revisión sea obligatoria, ese archivo debe estar incorporado a `main` y GitHub debe tener activa una regla de protección que exija Pull Request y revisión de Code Owners. La documentación por sí sola no activa esa protección.
 
 Los cambios exclusivamente documentales o de metadatos de revisión pueden validarse revisando el diff, enlaces y sintaxis; las validaciones de ejecución anteriores son obligatorias cuando se modifica la aplicación, sus dependencias o su arranque. Informar siempre qué se ejecutó y qué quedó pendiente.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

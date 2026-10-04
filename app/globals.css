@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+/* Identidad Vialseg: azul noche de la presentación, celeste y verde lima del logo. */
+@theme inline {
+  --color-noche: #0b1424;
+  --color-noche-2: #121d33;
+  --color-noche-3: #1b2945;
+  --color-cielo: #00a5d5;
+  --color-lima: #83c735;
+  --color-lima-2: #9bd94f;
+  --color-tinta: #172231;
+  --color-gris: #64748b;
+  --color-linea: #e3e8ef;
+  --color-fondo: #f4f6f9;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  background: var(--color-fondo);
+  color: var(--color-tinta);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Leaflet: marcadores propios sin el recuadro blanco por defecto. */
+.leaflet-div-icon.pin {
+  background: transparent;
+  border: 0;
+}
+.leaflet-popup-content-wrapper {
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgb(11 20 36 / 0.18);
+}
+.leaflet-popup-content {
+  margin: 14px 16px;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+.leaflet-container {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+@keyframes pulso {
+  0% { box-shadow: 0 0 0 0 rgb(131 199 53 / 0.55); }
+  100% { box-shadow: 0 0 0 14px rgb(131 199 53 / 0); }
+}
+.pulso {
+  animation: pulso 1.8s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulso { animation: none; }
+}

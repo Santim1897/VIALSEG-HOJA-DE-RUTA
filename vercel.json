@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 60,
+      "excludeFiles": "{.venv/**,node_modules/**,legacy/**,.next/**,tests/**,.data/**,public/**}"
+    }
+  }
+}

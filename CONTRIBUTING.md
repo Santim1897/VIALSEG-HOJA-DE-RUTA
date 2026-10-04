@@ -27,7 +27,7 @@ Si falta `origin` o el historial local no corresponde al repositorio, clonar en 
 Modificar y probar el sistema en la copia local. Cumplir las validaciones de `AGENTS.md` y describir sus resultados. Luego publicar únicamente los archivos necesarios:
 
 ```powershell
-git add app.py README.md
+git add lib/premio.ts README.md
 git commit -m "Describe el cambio"
 git push -u origin feat/nombre-del-cambio
 ```
