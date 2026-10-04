@@ -107,6 +107,8 @@ npx tsc --noEmit && npm run lint                  # tipos y estilo
 
 ## Supabase
 
+En uso: proyecto `vialseg-hoja-de-ruta` (ref `flwdmdpccthccpxwembv`, región São Paulo) en la organización de Supabase de Gonzalo. Producción en Vercel ya apunta a esta base. El desarrollo local sigue usando `.data/db.json` salvo que se pongan las variables en `.env.local`.
+
 1. Crear el proyecto (región São Paulo) en supabase.com.
 2. SQL Editor → ejecutar [`supabase/migrations/0001_inicial.sql`](supabase/migrations/0001_inicial.sql).
 3. Poner `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` en `.env.local` (y en Vercel). La primera lectura carga los datos ficticios.
