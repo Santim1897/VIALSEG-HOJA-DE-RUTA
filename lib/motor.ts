@@ -4,7 +4,6 @@ import { PARAMETROS_INICIALES } from "./catalogo";
 import { premioFaltante } from "./heuristica";
 import { valorar } from "./premio";
 import { fila, matriz, trazado, type Matriz } from "./rutas";
-import { BASES_CANDIDATAS } from "./seed";
 import { store } from "./store";
 import { aMinutos, hoy, minutosDelDia } from "./tiempo";
 import type { CacheMatriz, DB, Jornada, MotivoPlan, Parada, Plan, Posicion } from "./types";
@@ -13,7 +12,8 @@ const VIGENCIA_MATRIZ_MS = 30 * 60_000;
 // La asignación aproxima el manejo con la ida desde la base: se deja 15% de la jornada para traslados entre countries.
 const HOLGURA = 0.85;
 
-export const parametros = (db: DB) => db.parametros[0] ?? PARAMETROS_INICIALES;
+// Se completa con los valores iniciales por si la base tiene parámetros guardados de una versión anterior.
+export const parametros = (db: DB) => ({ ...PARAMETROS_INICIALES, ...db.parametros[0] });
 export const idJornada = (camionetaId: string, fecha = hoy()) => `${fecha}_${camionetaId}`;
 
 export function jornadaDe(db: DB, camionetaId: string, fecha = hoy()): Jornada {
@@ -174,16 +174,4 @@ export async function sugerirAsignacion(origin: string) {
       fijos: fijos.filter((f) => conFallas.some((c) => c.id === f.country)),
     });
   return { ...r, proveedor: m.proveedor };
-}
-
-/** Centro de gravedad de la red y comparación de bases candidatas. */
-export async function analisisRed(origin: string, criterio: "equipos" | "fallas" = "equipos") {
-  const db = await store().leer();
-  const demanda = (id: string) =>
-    criterio === "equipos" ? db.equipos.filter((e) => e.countryId === id).length : db.fallas.filter((f) => f.countryId === id).length;
-  return optimizador<{ centro: { lat: number; lon: number; tc: number; country_mas_cercano: string }; candidatas: { id: string; nombre: string; lat: number; lon: number; tc: number; sobrecosto_pct: number }[] }>(
-    origin, "gravedad", {
-      countries: db.countries.map((c) => ({ id: c.id, nombre: c.nombre, lat: c.lat, lon: c.lon, demanda: demanda(c.id) })).filter((c) => c.demanda > 0),
-      candidatas: BASES_CANDIDATAS,
-    });
 }

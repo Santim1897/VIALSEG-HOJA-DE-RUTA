@@ -16,10 +16,8 @@ export interface DatosMapa {
   planes: Record<string, Plan>;
   posiciones: Record<string, Posicion | undefined>;
   asignado: Record<string, string>; // countryId → camionetaId
-  centro?: { lat: number; lon: number } | null;
   visibles: Record<string, boolean>;
   conductores?: Record<string, string>; // camionetaId → nombre del conductor del día
-  extras?: { lat: number; lon: number; nombre: string }[];
 }
 
 const icono = (html: string, tam: number) => L.divIcon({ className: "pin", html, iconSize: [tam, tam], iconAnchor: [tam / 2, tam / 2] });
@@ -28,10 +26,9 @@ const iconoParada = (n: number, color: string) =>
 const iconoCamioneta = (color: string) =>
   icono(`<div style="width:34px;height:34px;border-radius:12px;background:#0b1424;border:3px solid ${color};display:grid;place-items:center;box-shadow:0 4px 12px #0006"><svg width="18" height="18" viewBox="0 0 24 24" fill="${color}"><path d="M3 6h11v9h1.5V9h3.2L22 12.5V17h-2a2.5 2.5 0 0 1-5 0H9a2.5 2.5 0 0 1-5 0H3z"/></svg></div>`, 34);
 const iconoBase = icono(`<div style="width:16px;height:16px;transform:rotate(45deg);background:#0b1424;border:2px solid #fff;box-shadow:0 2px 6px #0005"></div>`, 16);
-const iconoCentro = icono(`<div style="width:26px;height:26px;border-radius:50%;border:3px dashed #0b1424;background:#ffffffcc"></div>`, 26);
 
 export default function Mapa({ datos, alto = 520 }: { datos: DatosMapa; alto?: number | string }) {
-  const { countries, fallas, equipos, tipos, camionetas, planes, posiciones, asignado, centro, visibles, conductores = {}, extras = [] } = datos;
+  const { countries, fallas, equipos, tipos, camionetas, planes, posiciones, asignado, visibles, conductores = {} } = datos;
   const abiertas = (id: string) => fallas.filter((f) => f.countryId === id && f.estado === "abierta");
   const bases = [...new Map(camionetas.map((c) => [`${c.base.lat},${c.base.lon}`, c.base])).values()];
 
@@ -117,17 +114,7 @@ export default function Mapa({ datos, alto = 520 }: { datos: DatosMapa; alto?: n
         ) : null;
       })}
 
-      {extras.map((x) => (
-        <CircleMarker key={x.nombre} center={[x.lat, x.lon]} radius={6} pathOptions={{ color: "#0b1424", weight: 2, fillColor: "#ffffff", fillOpacity: 1 }}>
-          <Tooltip direction="top">{x.nombre}</Tooltip>
-        </CircleMarker>
-      ))}
 
-      {centro && (
-        <Marker position={[centro.lat, centro.lon]} icon={iconoCentro} zIndexOffset={900}>
-          <Tooltip direction="top" permanent>Centro de gravedad</Tooltip>
-        </Marker>
-      )}
     </MapContainer>
   );
 }

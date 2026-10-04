@@ -3,7 +3,6 @@
 Rutas:
     POST /api/py/ruteo       orden óptimo de visitas de una camioneta
     POST /api/py/asignacion  sugerencia de qué countries hace cada camioneta
-    POST /api/py/gravedad    centro de gravedad y evaluación de bases
     GET  /api/py/salud       verificación
 """
 import os
@@ -14,7 +13,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fastapi import FastAPI  # noqa: E402
 
 from _modelos.asignacion import resolver_asignacion  # noqa: E402
-from _modelos.gravedad import resolver_gravedad  # noqa: E402
 from _modelos.ruteo import resolver_ruteo  # noqa: E402
 
 app = FastAPI(title="Vialseg · Optimizador", docs_url="/api/py/docs", openapi_url="/api/py/openapi.json")
@@ -34,7 +32,3 @@ def ruteo(datos: dict):
 def asignacion(datos: dict):
     return resolver_asignacion(datos)
 
-
-@app.post("/api/py/gravedad")
-def gravedad(datos: dict):
-    return resolver_gravedad(datos)

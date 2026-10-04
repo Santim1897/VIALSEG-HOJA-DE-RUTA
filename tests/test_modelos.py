@@ -6,7 +6,6 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "api"))
 
 from _modelos.asignacion import resolver_asignacion  # noqa: E402
-from _modelos.gravedad import resolver_gravedad  # noqa: E402
 from _modelos.ruteo import resolver_pd, resolver_pli, resolver_ruteo  # noqa: E402
 import random  # noqa: E402
 
@@ -68,15 +67,6 @@ class Asignacion(unittest.TestCase):
         cts = [{"id": c, "premio": p, "servicio": 40} for c, p in (("A", 5), ("B", 9))]
         r = resolver_asignacion({"camionetas": cams, "countries": cts, "tiempos": [[5, 5]]})
         self.assertEqual(r["asignacion"]["c1"], ["B"])
-
-
-class Gravedad(unittest.TestCase):
-    def test_centro_entre_puntos(self):
-        cs = [{"id": "a", "lat": -34.4, "lon": -58.8, "demanda": 1}, {"id": "b", "lat": -34.4, "lon": -58.6, "demanda": 1},
-              {"id": "c", "lat": -34.5, "lon": -58.7, "demanda": 1}]
-        r = resolver_gravedad({"countries": cs, "candidatas": [{"id": "lejos", "lat": -34.9, "lon": -58.0}]})
-        self.assertAlmostEqual(r["centro"]["lon"], -58.7, delta=0.05)
-        self.assertGreater(r["candidatas"][0]["sobrecosto_pct"], 0)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # Vialseg · Hoja de ruta v2
 
-Sistema que le indica a cada conductor de Vialseg **a qué country ir después**, por cálculo y no por experiencia, y le da a la administración de Martínez una vista de todas las camionetas. Proyecto de consultoría de la materia Supply Chain (ITBA), unidad *Redes de Distribución*.
+Sistema que le indica a cada conductor de Vialseg **a qué country ir después**, por cálculo y no por experiencia, y le da a la administración una vista de todas las camionetas. Todas salen de la sede de Vialseg (Martín Lezica 3093, San Isidro). Proyecto de consultoría de la materia Supply Chain (ITBA), unidad *Redes de Distribución*.
 
 > Rama `v2/base-nueva`: reescritura completa. El prototipo anterior (un solo `app.py`) quedó en [`legacy/`](legacy/) como referencia. Hasta recibir los datos reales de Vialseg, el sistema arranca con datos de ejemplo (countries, equipos, fallas y conductores).
 
@@ -23,9 +23,9 @@ Ingreso único en `/login` con dos roles. Cada rol solo accede a su sección: lo
 | Countries y equipos | Alta, edición y baja de countries (ubicación con clic en el mapa, contacto, indicaciones para el conductor) y de sus equipos (producto, ubicación, n.º de serie, instalación). Ficha con fallas y visitas |
 | Flota | Camionetas: patente, color, base y horario de jornada; sacar de servicio |
 | Usuarios | Conductores (PIN) y administradores (contraseña): alta, edición, resetear acceso, desactivar |
-| Análisis | Tasa de falla por producto y ubicación óptima de la base |
+| Análisis | Tasa de falla por producto |
 | Auditoría | Toda acción con usuario y hora, cada ruta calculada y cada visita (con foto) |
-| Configuración | Criterios de ruteo, gravedad por tipo de falla, app de navegación, carga y borrado de datos |
+| Configuración | Cuadro de cómo se decide el recorrido, criterios de ruteo, gravedad por tipo de falla, app de navegación, carga y borrado de datos |
 
 **App del conductor** (tres pestañas):
 
@@ -51,7 +51,7 @@ Navegador (Next.js / React)            Servidor (Next.js, rutas /api)           
 | `proxy.ts` | Control de acceso por rol antes de renderizar |
 | `components/` | `admin/` (layout, datos compartidos, formularios), `conductor/ConductorApp.tsx`, `ui.tsx`, mapas (Leaflet) |
 | `lib/` | Dominio: `types.ts`, `catalogo.ts` (productos y gravedades), `seed.ts` (datos ficticios), `premio.ts` (valoración), `motor.ts` (orquestación), `rutas.ts` (tiempos de viaje), `store.ts` (almacenamiento), `acciones.ts` (reglas de negocio y validaciones), `auth.ts` / `sesion.ts` / `clave.ts` / `cuentas.ts` (acceso) |
-| `api/` | Optimizador en Python: `index.py` (FastAPI) y `_modelos/` (`ruteo.py`, `asignacion.py`, `gravedad.py`) |
+| `api/` | Optimizador en Python: `index.py` (FastAPI) y `_modelos/` (`ruteo.py`, `asignacion.py`) |
 | `supabase/migrations/` | Esquema de la base |
 | `tests/` | Pruebas de los modelos |
 | `docs/` | [MODELOS.md](docs/MODELOS.md) (matemática), [DECISIONES.md](docs/DECISIONES.md) (qué se decidió y por qué) |
@@ -62,9 +62,8 @@ Navegador (Next.js / React)            Servidor (Next.js, rutas /api)           
 |---|---|---|---|
 | Ruteo | ¿En qué orden visito mis countries? | Programación dinámica exacta; misma formulación como PLE con OR-Tools + SCIP | Redes, programación lineal entera |
 | Asignación | ¿Qué countries hace cada camioneta? | PLE con OR-Tools + SCIP | Alocación de demanda por maximización de beneficios |
-| Centro de gravedad | ¿Dónde conviene la base? | Weiszfeld, comparación de bases | Modelo de centro de gravedad |
 
-**Premio de un country** = Σ gravedad × (1 + 0,25 por cada 24 h caído, hasta 4 días) × (1 + 0,3 × facturación relativa) × (1 + 0,5 × % de equipos rotos). Todos los pesos se editan en **Parámetros**.
+**Prioridad de un country** = Σ gravedad × (1 + 0,25 por día caído, hasta 4 días) × (1 + 0,3 × abono relativo) × (1 + 0,5 × % de equipos rotos). Tiempo en cada country: ingreso (15 min) + 35 min por equipo (15 de trabajo + 20 de manejo interno). Todos los valores se editan en **Configuración**, donde también hay un cuadro con el criterio completo.
 
 ## Datos variables (lo que después viene de la plataforma de Vialseg)
 

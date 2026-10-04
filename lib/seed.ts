@@ -32,21 +32,13 @@ const COUNTRIES: [string, string, number, number, number][] = [
   ["Boulogne Golf", "San Isidro", -34.497, -58.573, 280000],
 ];
 
-export const BASES_CANDIDATAS = [
-  { id: "martinez", nombre: "Martínez (base actual)", lat: -34.4904, lon: -58.5039 },
-  { id: "pilar", nombre: "Pilar centro", lat: -34.4587, lon: -58.9142 },
-  { id: "escobar", nombre: "Belén de Escobar", lat: -34.3487, lon: -58.7953 },
-  { id: "benavidez", nombre: "Benavídez", lat: -34.411, lon: -58.688 },
-  { id: "del_viso", nombre: "Del Viso", lat: -34.452, lon: -58.799 },
-  { id: "tigre", nombre: "Tigre centro", lat: -34.426, lon: -58.5797 },
-];
-
-const BASE_MARTINEZ = { nombre: "Base Martínez", lat: -34.4904, lon: -58.5039 };
+// Sede de Vialseg: Martín Lezica 3093, Lomas de San Isidro (B1642GJA).
+const SEDE = { nombre: "Sede San Isidro", lat: -34.49488, lon: -58.54782 };
 
 export const CAMIONETAS: Camioneta[] = [
-  { id: "c1", nombre: "Camioneta 1", patente: "", color: "#00a5d5", base: BASE_MARTINEZ, inicio: "08:00", fin: "17:00", activa: true },
-  { id: "c2", nombre: "Camioneta 2", patente: "", color: "#83c735", base: BASE_MARTINEZ, inicio: "08:00", fin: "17:00", activa: true },
-  { id: "c3", nombre: "Camioneta 3", patente: "", color: "#f59e0b", base: { nombre: "Base Pilar", lat: -34.4587, lon: -58.9142 }, inicio: "08:00", fin: "17:00", activa: true },
+  { id: "c1", nombre: "Camioneta 1", patente: "", color: "#00a5d5", base: SEDE, inicio: "08:00", fin: "17:00", activa: true },
+  { id: "c2", nombre: "Camioneta 2", patente: "", color: "#83c735", base: SEDE, inicio: "08:00", fin: "17:00", activa: true },
+  { id: "c3", nombre: "Camioneta 3", patente: "", color: "#f59e0b", base: SEDE, inicio: "08:00", fin: "17:00", activa: true },
 ];
 
 function usuario(id: string, nombre: string, rol: Usuario["rol"], secreto: string, extra: Partial<Usuario> = {}): Usuario {

@@ -32,7 +32,7 @@ export function valorar(db: DB, p: Parametros, ahora = Date.now()): Map<string, 
     res.set(c.id, {
       countryId: c.id,
       premio: Math.round(gravedadPonderada * factorFacturacion * factorRotos * 100) / 100,
-      servicioMin: fallas.length ? c.ingresoMin + p.minutosPorFalla * fallas.length : 0,
+      servicioMin: fallas.length ? c.ingresoMin + (p.minutosPorFalla + p.minutosTrasladoInterno) * fallas.length : 0,
       fallas,
       gravedadMax: Math.max(0, ...fallas.map((f) => f.gravedad)),
       equipos,

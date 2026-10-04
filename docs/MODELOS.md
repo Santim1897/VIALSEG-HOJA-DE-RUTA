@@ -1,6 +1,6 @@
 # Modelos de optimización
 
-Los tres modelos viven en `api/_modelos/` y se exponen en `/api/py/*` (FastAPI). Usan la misma herramienta que la cátedra (Google OR-Tools, `pywraplp` con el solver SCIP, como en el repo [mfsanchez2020/Localizacion](https://github.com/mfsanchez2020/Localizacion)), salvo el ruteo en vivo, que se resuelve con programación dinámica por velocidad.
+Los modelos viven en `api/_modelos/` y se exponen en `/api/py/*` (FastAPI). Usan la misma herramienta que la cátedra (Google OR-Tools, `pywraplp` con el solver SCIP, como en el repo [mfsanchez2020/Localizacion](https://github.com/mfsanchez2020/Localizacion)), salvo el ruteo en vivo, que se resuelve con programación dinámica por velocidad.
 
 ## 1. Premio de cada country (`lib/premio.ts`)
 
@@ -17,7 +17,9 @@ pⱼ = Σ_fallas [ gravedad_f × (1 + α · min(horas_f / 24, 4)) ] × (1 + β �
 | β | peso del tamaño del cliente | 0,3 |
 | γ | peso de la proporción de equipos rotos | 0,5 |
 
-Tiempo de servicio del country: sⱼ = ingreso (15 min) + 11 min × cantidad de fallas.
+Tiempo en el country: sⱼ = ingreso por guardia (15 min, editable por country) + (15 min de trabajo + 20 min de manejo interno) × cantidad de equipos con falla.
+
+Dónde está cada cosa: la fórmula del premio en `lib/premio.ts`; los pesos en Configuración (se guardan en la base, colección `parametros`); la gravedad por tipo de falla en Configuración (colección `tipos_falla`, valores iniciales en `lib/catalogo.ts`); el modelo de ruteo en `api/_modelos/ruteo.py`. En el panel, **Configuración → Cómo se decide el recorrido** muestra el cuadro con los valores vigentes.
 
 ## 2. Ruteo de una camioneta (`ruteo.py`)
 
@@ -68,14 +70,10 @@ s.a. Σᵢ xᵢⱼ ≤ 1                       cada country, una sola camioneta
 
 Es un esquema "primero agrupar, después rutear": la asignación aproxima el manejo con la ida desde la base y el ruteo calcula la secuencia real. Con costo fijo > 0 el modelo consolida camionetas (economías de escala, como en el TP de TelecomOptic).
 
-## 4. Centro de gravedad (`gravedad.py`)
-
-Diapositivas 49-50: min TC = Σ dₙ·Dₙ·Fₙ, con dₙ la distancia euclídea en km (proyección local), Dₙ = equipos instalados (o fallas) del country y Fₙ = 1. Se resuelve con el algoritmo de Weiszfeld y se compara el TC de bases candidatas reales (Martínez, Pilar, Escobar, Benavídez, Del Viso, Tigre). Con los datos ficticios, el centro cae cerca de Campo Chico (Pilar) y Benavídez queda a +5% del óptimo, mientras que Martínez queda a +178%.
-
-## 5. Conexión con la teoría (para el informe)
+## 4. Conexión con la teoría (para el informe)
 
 - **Valor generado vs. costo** (diapositivas 3-5): el objetivo del ruteo es literalmente premio (valor para el cliente) − costo de transporte.
 - **Tiempo de respuesta**: KPI "tiempo caído promedio" y "tiempo de respuesta" en el panel.
 - **Visibilidad de la orden**: estado de cada falla y posición de cada camioneta en tiempo real.
 - **Integración de decisiones ya tomadas** (diapositiva 51): destino fijado por el conductor, destino forzado por el admin y countries ya atendidos no se cambian.
-- **Arquetipo de red**: servicio desde una base con "última milla" propia (diapositivas 26-29); el análisis de bases es el trade-off número de instalaciones vs. tiempo de respuesta (diapositiva 6).
+- **Arquetipo de red**: servicio desde una base (sede de San Isidro) con "última milla" propia (diapositivas 26-29).
