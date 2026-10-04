@@ -29,6 +29,7 @@ Horarios y autorizaciones de proveedores en cada barrio; repuestos y habilidades
 
 ### Pendiente para producción
 
+- **Lista real de countries donde opera Vialseg**: todavía no la tenemos (llega en unos días). Los 24 countries de `lib/seed.ts` (nombres, coordenadas, facturación y equipos) son inventados, igual que los del prototipo v1. Al recibirla, reemplazar el arreglo `COUNTRIES` de `lib/seed.ts` y hacer "Reiniciar demo".
 - Conectar la plataforma de Vialseg (importador de fallas, countries y equipos con `origen: "vialseg"`).
 - Clave de Google Routes para tráfico en vivo.
 - Supabase Auth (roles admin / conductor) y Storage para las fotos.
