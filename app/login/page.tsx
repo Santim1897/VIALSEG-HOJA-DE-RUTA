@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { InputClave } from "@/components/ui";
 
 type Conductor = { id: string; nombre: string };
 const ULTIMO = "vialseg-ultimo-conductor";
@@ -127,7 +128,7 @@ function IngresoAdmin() {
       }}
     >
       <input className={entrada} placeholder="Usuario" value={usuario} onChange={(e) => setUsuario(e.target.value)} autoComplete="username" autoCapitalize="none" />
-      <input className={entrada} placeholder="Contraseña" type="password" value={clave} onChange={(e) => setClave(e.target.value)} autoComplete="current-password" />
+      <InputClave oscuro className={entrada} placeholder="Contraseña" value={clave} onChange={(e) => setClave(e.target.value)} autoComplete="current-password" />
       {error && <p className="text-sm text-red-300">{error}</p>}
       <button disabled={ocupado || !usuario || !clave} className="h-12 w-full rounded-xl bg-lima font-semibold text-noche transition disabled:opacity-50">
         {ocupado ? "Ingresando…" : "Ingresar"}

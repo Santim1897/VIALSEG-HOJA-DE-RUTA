@@ -4,7 +4,7 @@ import { useState } from "react";
 import { PRODUCTOS } from "@/lib/catalogo";
 import type { Camioneta, Country, Equipo, Punto, UsuarioPublico } from "@/lib/types";
 import { MapaSelectorDinamico } from "../MapaDinamico";
-import { Boton, campo, Campo, Modal } from "../ui";
+import { Boton, campo, Campo, InputClave, Modal } from "../ui";
 import { useAdmin } from "./datos";
 
 function useGuardar(cerrar: () => void) {
@@ -132,7 +132,7 @@ export function FormUsuario({ usuario, rol, cerrar }: { usuario?: UsuarioPublico
         <Campo etiqueta="Teléfono"><input className={campo} value={f.telefono} onChange={(e) => setF({ ...f, telefono: e.target.value })} /></Campo>
         {!usuario && (
           esAdmin
-            ? <Campo etiqueta="Contraseña inicial" ayuda="Mínimo 8 caracteres. Se le pide cambiarla al entrar."><input type="password" className={campo} value={f.secreto} onChange={(e) => setF({ ...f, secreto: e.target.value })} autoComplete="new-password" /></Campo>
+            ? <Campo etiqueta="Contraseña inicial" ayuda="Mínimo 8 caracteres. Se le pide cambiarla al entrar."><InputClave className={campo} value={f.secreto} onChange={(e) => setF({ ...f, secreto: e.target.value })} autoComplete="new-password" /></Campo>
             : <Campo etiqueta="PIN de 4 números" ayuda="Con este PIN entra desde el celular."><input inputMode="numeric" maxLength={4} className={`${campo} tracking-[0.5em]`} value={f.secreto} onChange={(e) => setF({ ...f, secreto: e.target.value.replace(/\D/g, "") })} /></Campo>
         )}
         {error && <p className="text-sm text-red-600">{error}</p>}
@@ -150,7 +150,7 @@ export function ResetearAcceso({ usuario, cerrar }: { usuario: UsuarioPublico; c
       pie={<Pie cerrar={cerrar} ocupado={ocupado} texto="Resetear" guardar={() => guardar({ accion: "resetear_acceso", id: usuario.id, secreto }, "Acceso reseteado")} />}>
       <p className="mb-3 text-sm text-gris">Se cierra la sesión abierta en sus dispositivos.{esAdmin && " Se le va a pedir que la cambie al entrar."}</p>
       {esAdmin
-        ? <input type="password" className={campo} value={secreto} onChange={(e) => setSecreto(e.target.value)} placeholder="Mínimo 8 caracteres" autoComplete="new-password" />
+        ? <InputClave className={campo} value={secreto} onChange={(e) => setSecreto(e.target.value)} placeholder="Mínimo 8 caracteres" autoComplete="new-password" />
         : <input inputMode="numeric" maxLength={4} className={`${campo} tracking-[0.5em]`} value={secreto} onChange={(e) => setSecreto(e.target.value.replace(/\D/g, ""))} placeholder="4 números" />}
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
     </Modal>

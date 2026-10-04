@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { fechaLarga } from "@/lib/tiempo";
-import { Boton, campo, Campo, Modal } from "../ui";
+import { Boton, campo, Campo, InputClave, Modal } from "../ui";
 import { postJson, useAdmin } from "./datos";
 
 const ICONOS: Record<string, string> = {
@@ -129,9 +129,9 @@ function CambiarClave({ obligatorio, cerrar }: { obligatorio: boolean; cerrar: (
       pie={<Boton onClick={guardar} disabled={!actual || !nueva}>Guardar</Boton>}>
       {obligatorio && <p className="mb-4 text-sm text-gris">Por seguridad, cambiá la contraseña inicial antes de continuar.</p>}
       <div className="space-y-3">
-        <Campo etiqueta="Contraseña actual"><input type="password" className={campo} value={actual} onChange={(e) => setActual(e.target.value)} autoComplete="current-password" /></Campo>
-        <Campo etiqueta="Contraseña nueva" ayuda="Mínimo 8 caracteres."><input type="password" className={campo} value={nueva} onChange={(e) => setNueva(e.target.value)} autoComplete="new-password" /></Campo>
-        <Campo etiqueta="Repetir contraseña nueva"><input type="password" className={campo} value={repetir} onChange={(e) => setRepetir(e.target.value)} autoComplete="new-password" /></Campo>
+        <Campo etiqueta="Contraseña actual"><InputClave className={campo} value={actual} onChange={(e) => setActual(e.target.value)} autoComplete="current-password" /></Campo>
+        <Campo etiqueta="Contraseña nueva" ayuda="Mínimo 8 caracteres."><InputClave className={campo} value={nueva} onChange={(e) => setNueva(e.target.value)} autoComplete="new-password" /></Campo>
+        <Campo etiqueta="Repetir contraseña nueva"><InputClave className={campo} value={repetir} onChange={(e) => setRepetir(e.target.value)} autoComplete="new-password" /></Campo>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
     </Modal>
