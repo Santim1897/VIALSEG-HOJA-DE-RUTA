@@ -54,7 +54,28 @@ export default function Fallas() {
         {lista.length === 0 ? (
           <Vacio titulo={estadoF === "abierta" ? "No hay fallas abiertas con esos filtros" : "No hay fallas resueltas con esos filtros"} />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <ul className="divide-y divide-linea sm:hidden">
+            {lista.map((f) => {
+              const eq = equipo(f.equipoId);
+              const c = country(f.countryId);
+              const cam = e.camionetas.find((k) => k.id === asignado[f.countryId]);
+              return (
+                <li key={f.id} onClick={() => setDetalle(f)} className="px-4 py-3 active:bg-fondo">
+                  <div className="flex items-center justify-between gap-2">
+                    <Gravedad valor={f.gravedad} />
+                    <span className="tabular text-xs text-gris">{f.estado === "abierta" ? `hace ${duracion(horasDesde(f.abiertaAt))}` : "Resuelta"}</span>
+                  </div>
+                  <p className="mt-1 text-sm font-medium">{eq ? nombreProducto(eq.producto) : "—"} · {e.tipos.find((t) => t.id === f.tipoId)?.nombre}</p>
+                  <p className="text-xs text-gris">
+                    {c?.nombre} · {eq?.ubicacion}
+                    {f.estado === "abierta" && <> · {cam ? <span className="font-medium" style={{ color: cam.color }}>{cam.nombre}</span> : <span className="text-amber-700">Sin asignar</span>}</>}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full min-w-[820px] text-sm">
               <thead className="bg-fondo"><tr><th className={th}>Gravedad</th><th className={th}>Equipo y falla</th><th className={th}>Country</th><th className={th}>{estadoF === "abierta" ? "Caído hace" : "Duración"}</th><th className={th}>Ruta de hoy</th></tr></thead>
               <tbody className="divide-y divide-linea">
@@ -83,6 +104,7 @@ export default function Fallas() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Tarjeta>
       {nueva && <NuevaFalla abierto cerrar={() => setNueva(false)} />}

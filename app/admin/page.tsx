@@ -42,7 +42,7 @@ export default function EnVivo() {
         acciones={<Boton variante="secundario" onClick={cargar}>Actualizar</Boton>}
       />
 
-      <section className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <section className="mb-5 grid grid-cols-3 gap-2 sm:gap-3 xl:grid-cols-6">
         {[
           ["Fallas abiertas", k.fallasAbiertas, `${k.criticas} altas o críticas`, k.criticas > 0],
           ["Tiempo caído promedio", `${k.horasPromedioCaido} h`, "fallas abiertas", false],
@@ -51,10 +51,10 @@ export default function EnVivo() {
           ["Tiempo en servicio", `${k.pctServicio}%`, "Del total de la ruta", false],
           ["Sin asignar", k.countriesSinAsignar.length, "Countries con fallas", k.countriesSinAsignar.length > 0],
         ].map(([t, v, s, alerta]) => (
-          <div key={t as string} className="rounded-xl border border-linea bg-white px-4 py-3.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-gris">{t}</p>
-            <p className={`tabular mt-1 text-2xl font-semibold tracking-tight ${alerta ? "text-amber-600" : ""}`}>{v}</p>
-            <p className="text-xs text-gris">{s}</p>
+          <div key={t as string} className="min-w-0 rounded-xl border border-linea bg-white px-3 py-2.5 sm:px-4 sm:py-3.5">
+            <p className="text-[10px] font-semibold uppercase leading-tight tracking-wide text-gris sm:text-[11px] sm:tracking-wider">{t}</p>
+            <p className={`tabular mt-0.5 text-lg font-semibold tracking-tight sm:mt-1 sm:text-2xl ${alerta ? "text-amber-600" : ""}`}>{v}</p>
+            <p className="hidden truncate text-xs text-gris sm:block">{s}</p>
           </div>
         ))}
       </section>
@@ -89,7 +89,9 @@ export default function EnVivo() {
             </div>
           }
         >
-          <div className="min-h-[560px] flex-1">
+          <p className="border-b border-linea px-5 py-2 text-xs text-gris sm:hidden">Usá dos dedos para mover el mapa.</p>
+          <div className="relative h-[300px] sm:h-[460px] xl:h-auto xl:min-h-[560px] xl:flex-1">
+            <div className="absolute inset-0">
             <MapaDinamico
               alto="100%"
               datos={{
@@ -97,10 +99,11 @@ export default function EnVivo() {
                 posiciones: Object.fromEntries(e.jornadas.map((j) => [j.camionetaId, j.posicion])), asignado, visibles, conductores,
               }}
             />
+            </div>
           </div>
         </Tarjeta>
 
-        <div className="space-y-3">
+        <div className="order-first space-y-3 xl:order-none">
           {e.camionetas.length === 0 && <Tarjeta><p className="p-5 text-sm text-gris">No hay camionetas activas. Cargalas en Flota.</p></Tarjeta>}
           {e.camionetas.map((c) => {
             const j = e.jornadas.find((x) => x.camionetaId === c.id)!;

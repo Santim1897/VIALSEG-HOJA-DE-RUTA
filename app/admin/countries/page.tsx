@@ -35,7 +35,28 @@ export default function Countries() {
         {lista.length === 0 ? (
           <Vacio titulo="No hay countries" texto="Cargá el primero con “Nuevo country”." />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <ul className="divide-y divide-linea sm:hidden">
+            {lista.map((c) => {
+              const v = e.valoraciones[c.id];
+              const cam = e.camionetas.find((k) => k.id === asignado[c.id]);
+              return (
+                <li key={c.id}>
+                  <Link href={`/admin/countries/${c.id}`} className="flex items-center justify-between gap-3 px-4 py-3 active:bg-fondo">
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">{c.nombre}</span>
+                      <span className="block text-xs text-gris">
+                        {c.zona} · {e.equipos.filter((x) => x.countryId === c.id && x.activo).length} equipos · {v?.fallas.length ?? 0} con falla
+                        {cam && <> · <span style={{ color: cam.color }}>{cam.nombre}</span></>}
+                      </span>
+                    </span>
+                    {c.activo ? <Gravedad valor={v?.gravedadMax ?? 0} /> : <Etiqueta>Baja</Etiqueta>}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full min-w-[760px] text-sm">
               <thead className="bg-fondo"><tr><th className={th}>Country</th><th className={th}>Equipos</th><th className={th}>Fallas abiertas</th><th className={th}>Estado</th><th className={th}>Abono mensual</th><th className={th}>Ruta de hoy</th></tr></thead>
               <tbody className="divide-y divide-linea">
@@ -56,6 +77,7 @@ export default function Countries() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Tarjeta>
       {nuevo && <FormCountry cerrar={() => setNuevo(false)} />}

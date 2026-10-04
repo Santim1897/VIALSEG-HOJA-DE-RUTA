@@ -32,8 +32,9 @@ export default function Mapa({ datos, alto = 520 }: { datos: DatosMapa; alto?: n
   const abiertas = (id: string) => fallas.filter((f) => f.countryId === id && f.estado === "abierta");
   const bases = [...new Map(camionetas.map((c) => [`${c.base.lat},${c.base.lon}`, c.base])).values()];
 
+  const tactil = window.matchMedia("(pointer: coarse)").matches;
   return (
-    <MapContainer center={[-34.42, -58.74]} zoom={11} scrollWheelZoom style={{ height: alto, minHeight: 560, width: "100%" }}>
+    <MapContainer center={[-34.42, -58.74]} zoom={tactil ? 10 : 11} scrollWheelZoom={!tactil} dragging={!tactil} touchZoom style={{ height: alto, width: "100%" }}>
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
