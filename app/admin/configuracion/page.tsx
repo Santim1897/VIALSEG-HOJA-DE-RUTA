@@ -7,8 +7,7 @@ import { NOMBRE_GRAVEDAD, nombreProducto, PRODUCTOS } from "@/lib/catalogo";
 import type { Parametros as P, TipoFalla } from "@/lib/types";
 
 const CAMPOS: [keyof P, string, string, number][] = [
-  ["minutosPorFalla", "Trabajo por equipo (min)", "Tiempo de reparación en cada equipo con falla.", 1],
-  ["minutosTrasladoInterno", "Manejo dentro del barrio por equipo (min)", "Traslado desde la guardia hasta cada equipo.", 1],
+  ["minutosPorFalla", "Tiempo por equipo (min)", "Por cada equipo con falla: reparación y manejo dentro del barrio.", 1],
   ["recalculoMin", "Actualizar rutas cada (min)", "Con la jornada en curso, para tener en cuenta el tráfico.", 1],
   ["umbralCambioMin", "Sugerir otro destino si ahorra (min)", "Evita cambiarle el destino al conductor por poco.", 1],
   ["pesoUrgencia", "Prioridad a lo urgente", "0 = solo importa la distancia · 1 = lo más grave primero.", 0.05],
@@ -51,7 +50,7 @@ export default function Configuracion() {
                 ["Equipos rotos en el barrio", "Más prioridad cuanto mayor es la proporción de equipos con falla sobre el total del country.", `hasta +${Math.round(p.factorRotos * 100)}% (todo roto)`],
                 ["Urgencia", "Penaliza dejar para el final a los countries de mayor prioridad.", `${p.pesoUrgencia} (0 a 1)`],
                 ["Tiempo de manejo entre countries", "Cada minuto de manejo resta. Con tráfico en vivo cuando está configurado el proveedor.", `${p.costoMinuto} puntos por minuto`],
-                ["Tiempo en cada country", "Ingreso por guardia + por cada equipo: trabajo y manejo interno.", `ingreso del country + ${p.minutosPorFalla} + ${p.minutosTrasladoInterno} min por equipo`],
+                ["Tiempo en cada country", "Ingreso por guardia + un tiempo fijo por cada equipo con falla (incluye el manejo dentro del barrio).", `ingreso del country + ${p.minutosPorFalla} min por equipo`],
                 ["Jornada", "El recorrido termina en la base dentro del horario de la camioneta; lo que no entra queda para otro día.", "Horario de cada camioneta (Flota)"],
               ].map(([c, d, v]) => (
                 <tr key={c}><td className={`${td} font-medium`}>{c}</td><td className={`${td} text-gris`}>{d}</td><td className={`${td} tabular whitespace-nowrap`}>{v}</td></tr>

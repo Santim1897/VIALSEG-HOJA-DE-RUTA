@@ -63,7 +63,7 @@ Navegador (Next.js / React)            Servidor (Next.js, rutas /api)           
 | Ruteo | ¿En qué orden visito mis countries? | Programación dinámica exacta; misma formulación como PLE con OR-Tools + SCIP | Redes, programación lineal entera |
 | Asignación | ¿Qué countries hace cada camioneta? | PLE con OR-Tools + SCIP | Alocación de demanda por maximización de beneficios |
 
-**Prioridad de un country** = Σ gravedad × (1 + 0,25 por día caído, hasta 4 días) × (1 + 0,3 × abono relativo) × (1 + 0,5 × % de equipos rotos). Tiempo en cada country: ingreso (15 min) + 35 min por equipo (15 de trabajo + 20 de manejo interno). Todos los valores se editan en **Configuración**, donde también hay un cuadro con el criterio completo.
+**Prioridad de un country** = Σ gravedad × (1 + 0,25 por día caído, hasta 4 días) × (1 + 0,3 × abono relativo) × (1 + 0,5 × % de equipos rotos). Tiempo en cada country: ingreso (15 min) + 20 min por equipo con falla (incluye el manejo dentro del barrio). Todos los valores se editan en **Configuración**, donde también hay un cuadro con el criterio completo.
 
 ## Datos variables (lo que después viene de la plataforma de Vialseg)
 

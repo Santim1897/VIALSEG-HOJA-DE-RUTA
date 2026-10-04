@@ -7,7 +7,7 @@ Qué se decidió, por qué y qué queda pendiente. Agregar una entrada por cada 
 | # | Decisión | Motivo |
 |---|---|---|
 | 27 | Las 3 camionetas salen de la sede: Martín Lezica 3093, Lomas de San Isidro (-34.49488, -58.54782) | Es la base real de Vialseg; la "Base Martínez" y la "Base Pilar" eran supuestos |
-| 28 | Tiempo por equipo con falla: 15 min de trabajo + 20 min de manejo dentro del barrio (antes 11 min en total); se mantiene el ingreso por guardia por country | Dato del equipo |
+| 28 | Tiempo por equipo con falla: 20 min en total, incluido el manejo dentro del barrio (antes 11 min); se mantiene el ingreso por guardia por country | Dato del equipo |
 | 29 | Se quita el modelo de centro de gravedad (ubicación óptima de la base) | La sede es fija: el análisis no aporta a la operación |
 | 30 | Cuadro "Cómo se decide el recorrido" en Configuración, con los valores vigentes | Que los criterios no queden solo en el código |
 

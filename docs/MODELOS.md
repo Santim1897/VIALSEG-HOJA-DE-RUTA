@@ -17,7 +17,7 @@ pⱼ = Σ_fallas [ gravedad_f × (1 + α · min(horas_f / 24, 4)) ] × (1 + β �
 | β | peso del tamaño del cliente | 0,3 |
 | γ | peso de la proporción de equipos rotos | 0,5 |
 
-Tiempo en el country: sⱼ = ingreso por guardia (15 min, editable por country) + (15 min de trabajo + 20 min de manejo interno) × cantidad de equipos con falla.
+Tiempo en el country: sⱼ = ingreso por guardia (15 min, editable por country) + 20 min × cantidad de equipos con falla (incluye la reparación y el manejo dentro del barrio).
 
 Dónde está cada cosa: la fórmula del premio en `lib/premio.ts`; los pesos en Configuración (se guardan en la base, colección `parametros`); la gravedad por tipo de falla en Configuración (colección `tipos_falla`, valores iniciales en `lib/catalogo.ts`); el modelo de ruteo en `api/_modelos/ruteo.py`. En el panel, **Configuración → Cómo se decide el recorrido** muestra el cuadro con los valores vigentes.
 

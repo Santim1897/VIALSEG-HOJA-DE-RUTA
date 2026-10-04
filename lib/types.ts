@@ -195,8 +195,7 @@ export interface Parametros {
   pesoUrgencia: number; // 0-1: cuánto castiga atender tarde lo urgente
   costoMinuto: number; // costo por minuto de manejo, en puntos de premio
   costoFijoCamioneta: number; // para el modelo de asignación
-  minutosPorFalla: number; // trabajo en el equipo
-  minutosTrasladoInterno: number; // manejo dentro del barrio hasta cada equipo
+  minutosPorFalla: number; // por equipo con falla: trabajo + manejo dentro del barrio
   recalculoMin: number;
   umbralCambioMin: number;
   factorHoras: number; // +X por cada 24 h caído
