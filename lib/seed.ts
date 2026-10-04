@@ -1,7 +1,8 @@
-// Datos ficticios para la demo. Coordenadas aproximadas de accesos: NO son ubicaciones operativas.
+// Datos de ejemplo hasta cargar los reales de Vialseg. Coordenadas aproximadas de accesos.
 import { PARAMETROS_INICIALES, TIPOS_FALLA } from "./catalogo";
+import { hashear } from "./clave";
 import { hoy } from "./tiempo";
-import type { Camioneta, Country, DB, Equipo, Falla, Jornada, ProductoId } from "./types";
+import type { Camioneta, Country, DB, Equipo, Falla, Jornada, ProductoId, Usuario } from "./types";
 
 const COUNTRIES: [string, string, number, number, number][] = [
   // nombre, zona, lat, lon, facturación mensual (ARS)
@@ -43,10 +44,18 @@ export const BASES_CANDIDATAS = [
 const BASE_MARTINEZ = { nombre: "Base Martínez", lat: -34.4904, lon: -58.5039 };
 
 export const CAMIONETAS: Camioneta[] = [
-  { id: "c1", nombre: "Camioneta 1", patente: "AE 123 KD", conductor: "Juan Pérez", color: "#00a5d5", base: BASE_MARTINEZ, inicio: "08:00", fin: "17:00" },
-  { id: "c2", nombre: "Camioneta 2", patente: "AF 456 LM", conductor: "Lucas Gómez", color: "#83c735", base: BASE_MARTINEZ, inicio: "08:00", fin: "17:00" },
-  { id: "c3", nombre: "Camioneta 3", patente: "AD 789 PQ", conductor: "Martín Díaz", color: "#f59e0b", base: { nombre: "Base Pilar", lat: -34.4587, lon: -58.9142 }, inicio: "08:00", fin: "17:00" },
+  { id: "c1", nombre: "Camioneta 1", patente: "", color: "#00a5d5", base: BASE_MARTINEZ, inicio: "08:00", fin: "17:00", activa: true },
+  { id: "c2", nombre: "Camioneta 2", patente: "", color: "#83c735", base: BASE_MARTINEZ, inicio: "08:00", fin: "17:00", activa: true },
+  { id: "c3", nombre: "Camioneta 3", patente: "", color: "#f59e0b", base: { nombre: "Base Pilar", lat: -34.4587, lon: -58.9142 }, inicio: "08:00", fin: "17:00", activa: true },
 ];
+
+function usuario(id: string, nombre: string, rol: Usuario["rol"], secreto: string, extra: Partial<Usuario> = {}): Usuario {
+  return { id, nombre, rol, ...hashear(secreto), version: 1, activo: true, creadoAt: new Date().toISOString(), ...extra };
+}
+
+/** Administrador inicial: usuario "admin", clave ADMIN_CLAVE_INICIAL (se pide cambiarla al entrar). */
+export const adminInicial = () =>
+  usuario("u-admin", "Administrador", "admin", process.env.ADMIN_CLAVE_INICIAL ?? "vialseg2026", { usuario: "admin", debeCambiarClave: true });
 
 const UBICACIONES = ["Acceso principal", "Avenida central", "Rotonda norte", "Calle del club house", "Salida secundaria", "Zona escuela", "Calle del lago", "Ingreso de servicio"];
 const MEZCLA: ProductoId[] = ["tableta", "tableta", "tableta", "totem", "totem", "radar", "radar", "smartred", "espiras"];
@@ -61,20 +70,23 @@ function generador(semilla: number) {
   };
 }
 
-export function datosIniciales(): DB {
+export function datosEjemplo(): DB {
   const azar = generador(20261003);
   const elegir = <T,>(lista: T[]) => lista[Math.floor(azar() * lista.length)];
   const ahora = Date.now();
 
   const countries: Country[] = COUNTRIES.map(([nombre, zona, lat, lon, facturacion], i) => ({
-    id: `b${String(i + 1).padStart(2, "0")}`, nombre, zona, lat, lon, facturacion, ingresoMin: 15, origen: "ficticio",
+    id: `b${String(i + 1).padStart(2, "0")}`, nombre, zona, lat, lon, facturacion, ingresoMin: 15, activo: true, origen: "ejemplo",
   }));
 
   const equipos: Equipo[] = [];
   for (const c of countries) {
     const cantidad = 3 + Math.floor(azar() * 6);
     for (let k = 0; k < cantidad; k++) {
-      equipos.push({ id: `${c.id}-e${k + 1}`, countryId: c.id, producto: elegir(MEZCLA), ubicacion: UBICACIONES[k % UBICACIONES.length] });
+      equipos.push({
+        id: `${c.id}-e${k + 1}`, countryId: c.id, producto: elegir(MEZCLA), ubicacion: UBICACIONES[k % UBICACIONES.length],
+        numeroSerie: `VS-${String(10000 + Math.floor(azar() * 89999))}`, instaladoAt: new Date(ahora - (100 + azar() * 1500) * 86400_000).toISOString().slice(0, 10), activo: true,
+      });
     }
   }
 
@@ -89,7 +101,7 @@ export function datosIniciales(): DB {
       const tipo = elegir(tipos);
       fallas.push({
         id: `f${String(fallas.length + 1).padStart(3, "0")}`, equipoId: e.id, countryId: c.id, tipoId: tipo.id, gravedad: tipo.gravedad,
-        abiertaAt: new Date(ahora - (2 + azar() * 70) * 3600_000).toISOString(), estado: "abierta", origen: "ficticio",
+        abiertaAt: new Date(ahora - (2 + azar() * 70) * 3600_000).toISOString(), estado: "abierta", origen: "ejemplo",
       });
     }
   }
@@ -98,13 +110,24 @@ export function datosIniciales(): DB {
   const conFallas = new Set(fallas.map((f) => f.countryId));
   const zonaDe = (c: Country) => (c.lon > -58.7 ? "c1" : c.lat > -34.4 ? "c2" : "c3");
   const fecha = hoy();
-  const jornadas: Jornada[] = CAMIONETAS.map((cam) => ({
-    id: `${fecha}_${cam.id}`, fecha, camionetaId: cam.id, estado: "pendiente", salteados: [], visitados: [],
+  const conductores = CAMIONETAS.map((_, i) => usuario(`u-cond${i + 1}`, `Conductor ${i + 1}`, "conductor", `${i + 1}`.repeat(4)));
+  const jornadas: Jornada[] = CAMIONETAS.map((cam, i) => ({
+    id: `${fecha}_${cam.id}`, fecha, camionetaId: cam.id, conductorId: conductores[i].id, estado: "pendiente", salteados: [], visitados: [],
     countries: countries.filter((c) => conFallas.has(c.id) && zonaDe(c) === cam.id).map((c) => c.id),
   }));
 
   return {
+    usuarios: [adminInicial(), ...conductores],
     parametros: [PARAMETROS_INICIALES], tipos_falla: TIPOS_FALLA, countries, equipos, fallas,
     camionetas: CAMIONETAS, jornadas, planes: [], eventos: [], cierres: [],
+  };
+}
+
+/** Base sin datos operativos: conserva usuarios, flota, parámetros y catálogo. */
+export function datosVacios(actual: DB): DB {
+  return {
+    usuarios: actual.usuarios.length ? actual.usuarios : [adminInicial()],
+    parametros: actual.parametros, tipos_falla: actual.tipos_falla, camionetas: actual.camionetas,
+    countries: [], equipos: [], fallas: [], jornadas: [], planes: [], eventos: [], cierres: [],
   };
 }

@@ -19,20 +19,22 @@ Sistema de ruteo de las camionetas de mantenimiento de Vialseg en barrios privad
 
 1. Stack: Next.js 16 (App Router, TypeScript, Tailwind 4) + optimizador en Python (`api/`, FastAPI + OR-Tools). Next.js 16 tiene cambios incompatibles: antes de usar una API de Next, leer la guía en `node_modules/next/dist/docs/` (por ejemplo, `params` y `cookies` son asíncronos y `middleware` pasó a llamarse `proxy`).
 2. Toda lectura/escritura de datos pasa por `lib/store.ts`. No acceder a Supabase desde el navegador; la `service_role` es solo de servidor.
-3. Los datos de countries, equipos, coordenadas y fallas son **ficticios**: no presentarlos como reales.
+3. El sistema se trata como producto en uso: textos de la interfaz sin referencias académicas ni de prototipo (eso va en `docs/`). Hasta recibir los datos reales, los countries, equipos y conductores son de ejemplo.
 4. La ruta de cada camioneta sale de su posición actual y vuelve a su base dentro de la jornada; 15 min de ingreso por country y 11 min por falla (editables en Parámetros).
 5. No cambiar pesos, gravedades o restricciones sin actualizar `README.md`, `docs/MODELOS.md` y `docs/DECISIONES.md`.
 6. Cada decisión nueva va como entrada en `docs/DECISIONES.md`. Mantener `README.md` y este archivo al día con cada cambio.
 7. Evitar dependencias nuevas sin justificarlas en el Pull Request. Nunca subir `.env.local`, `.data/`, `.venv/` ni claves.
+8. Seguridad: toda ruta de API usa `usuarioActual(rol)`; `proxy.ts` protege `/admin` y `/conductor`. Contraseñas y PIN con scrypt (`lib/clave.ts`). Nunca devolver `hash`/`sal` al navegador (usar `publico()`). Las validaciones de negocio van en `lib/acciones.ts`, no solo en la interfaz.
 
 ## Validación mínima antes de proponer un Pull Request
 
 1. `.venv\Scripts\python -m unittest discover tests` sin errores.
 2. `npx tsc --noEmit` y `npm run lint` sin errores.
 3. Con el optimizador (`uvicorn api.index:app --port 8000`) y `npm run dev` corriendo, en http://localhost:3000:
-   - `/admin` muestra el mapa, los countries por gravedad y los recorridos por color.
-   - `/conductor/c1`: Iniciar jornada → Llegué → Terminé recalcula desde ese country.
-   - "Sugerir con el modelo" en Asignación devuelve una propuesta.
+   - `/login` como administración (`admin`) → `/admin` muestra el mapa, los countries por gravedad y los recorridos por color.
+   - `/login` como conductor (Conductor 1, PIN 1111) → Iniciar jornada → Llegué → Terminé recalcula desde ese country; Deshacer funciona.
+   - Un conductor no puede abrir `/admin` ni llamar a `/api/admin` (401).
+   - Planificación → Editar plan → Sugerir distribución → Revisar y guardar.
 
 ## Forma de trabajar de los agentes
 

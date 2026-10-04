@@ -1,8 +1,189 @@
-import type { Metadata } from "next";
-import AdminApp from "@/components/admin/AdminApp";
+"use client";
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { useAdmin, useAsignadoHoy } from "@/components/admin/datos";
+import { Encabezado } from "@/components/admin/Shell";
+import MapaDinamico from "@/components/MapaDinamico";
+import { Boton, Confirmar, Etiqueta, Tarjeta } from "@/components/ui";
+import { COLOR_GRAVEDAD, NOMBRE_GRAVEDAD } from "@/lib/catalogo";
+import { hora } from "@/lib/tiempo";
 
-export const metadata: Metadata = { title: "Centro de operaciones · Vialseg" };
+export default function EnVivo() {
+  const { estado, accion, cargar, avisar } = useAdmin();
+  const asignado = useAsignadoHoy();
+  const [visibles, setVisibles] = useState<Record<string, boolean>>({});
+  const [forzar, setForzar] = useState<{ cam: string; country: string } | null>(null);
+  const [calculando, setCalculando] = useState<string | null>(null);
+  const e = estado!;
+  const nombre = (id?: string | null) => e.countries.find((c) => c.id === id)?.nombre ?? "";
+  const conductores = useMemo(
+    () => Object.fromEntries(e.jornadas.map((j) => [j.camionetaId, e.usuarios.find((u) => u.id === j.conductorId)?.nombre ?? ""])),
+    [e],
+  );
+  const proveedor = Object.values(e.planes)[0]?.proveedor;
+  const k = e.kpis;
 
-export default function Admin() {
-  return <AdminApp />;
+  const recalcular = async (cam: string) => {
+    setCalculando(cam);
+    try {
+      await accion({ accion: "planificar", camionetaId: cam }, "Ruta recalculada");
+    } catch (err) {
+      avisar(err instanceof Error ? err.message : "Error");
+    } finally {
+      setCalculando(null);
+    }
+  };
+
+  return (
+    <>
+      <Encabezado
+        titulo="Operación en vivo"
+        descripcion={proveedor ? `Tiempos de viaje: ${proveedor}` : undefined}
+        acciones={<Boton variante="secundario" onClick={cargar}>Actualizar</Boton>}
+      />
+
+      <section className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        {[
+          ["Fallas abiertas", k.fallasAbiertas, `${k.criticas} altas o críticas`, k.criticas > 0],
+          ["Tiempo caído promedio", `${k.horasPromedioCaido} h`, "fallas abiertas", false],
+          ["Resueltas hoy", k.resueltasHoy, k.tiempoRespuestaHoras ? `Respuesta prom. ${k.tiempoRespuestaHoras} h` : "Sin cierres todavía", false],
+          ["Km planificados", k.kmPlanificados, "Rutas vigentes", false],
+          ["Tiempo en servicio", `${k.pctServicio}%`, "Del total de la ruta", false],
+          ["Sin asignar", k.countriesSinAsignar.length, "Countries con fallas", k.countriesSinAsignar.length > 0],
+        ].map(([t, v, s, alerta]) => (
+          <div key={t as string} className="rounded-xl border border-linea bg-white px-4 py-3.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gris">{t}</p>
+            <p className={`tabular mt-1 text-2xl font-semibold tracking-tight ${alerta ? "text-amber-600" : ""}`}>{v}</p>
+            <p className="text-xs text-gris">{s}</p>
+          </div>
+        ))}
+      </section>
+
+      {k.countriesSinAsignar.length > 0 && (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <span>Hay {k.countriesSinAsignar.length} countries con fallas que hoy no están en ninguna ruta: {k.countriesSinAsignar.map(nombre).join(", ")}.</span>
+          <Link href="/admin/planificacion" className="font-semibold underline">Ir a planificación</Link>
+        </div>
+      )}
+
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <Tarjeta
+          className="flex flex-col overflow-hidden"
+          titulo="Mapa de la red"
+          accion={
+            <div className="flex flex-wrap items-center gap-3 text-xs text-gris">
+              {[1, 3, 4, 5].map((g) => (
+                <span key={g} className="hidden items-center gap-1 sm:inline-flex">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: COLOR_GRAVEDAD[g] }} />
+                  {NOMBRE_GRAVEDAD[g]}
+                </span>
+              ))}
+              <span className="hidden h-4 w-px bg-linea sm:block" />
+              {e.camionetas.map((c) => (
+                <label key={c.id} className="inline-flex cursor-pointer items-center gap-1.5 font-medium text-tinta">
+                  <input type="checkbox" className="accent-noche" checked={visibles[c.id] !== false} onChange={(ev) => setVisibles({ ...visibles, [c.id]: ev.target.checked })} />
+                  <span className="h-1.5 w-4 rounded-full" style={{ background: c.color }} />
+                  {c.nombre}
+                </label>
+              ))}
+            </div>
+          }
+        >
+          <div className="min-h-[560px] flex-1">
+            <MapaDinamico
+              alto="100%"
+              datos={{
+                countries: e.countries, fallas: e.fallas, equipos: e.equipos, tipos: e.tipos, camionetas: e.camionetas, planes: e.planes,
+                posiciones: Object.fromEntries(e.jornadas.map((j) => [j.camionetaId, j.posicion])), asignado, visibles, conductores,
+              }}
+            />
+          </div>
+        </Tarjeta>
+
+        <div className="space-y-3">
+          {e.camionetas.length === 0 && <Tarjeta><p className="p-5 text-sm text-gris">No hay camionetas activas. Cargalas en Flota.</p></Tarjeta>}
+          {e.camionetas.map((c) => {
+            const j = e.jornadas.find((x) => x.camionetaId === c.id)!;
+            const plan = e.planes[c.id];
+            const proxima = plan?.paradas[0];
+            const total = j.countries.length;
+            const pendientes = j.countries.filter((x) => !j.visitados.includes(x));
+            return (
+              <Tarjeta key={c.id}>
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="h-9 w-1.5 rounded-full" style={{ background: c.color }} />
+                      <div>
+                        <p className="font-semibold leading-tight">{c.nombre} {c.patente && <span className="text-xs font-normal text-gris">· {c.patente}</span>}</p>
+                        <p className="text-xs text-gris">{conductores[c.id] || <Link href="/admin/planificacion" className="text-amber-700 underline">Sin conductor asignado</Link>}</p>
+                      </div>
+                    </div>
+                    {j.estado === "activa" ? <Etiqueta tono="verde">En ruta</Etiqueta> : j.estado === "finalizada" ? <Etiqueta>Finalizada</Etiqueta> : <Etiqueta tono="ambar">Sin iniciar</Etiqueta>}
+                  </div>
+
+                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-full rounded-full" style={{ width: `${total ? (j.visitados.length / total) * 100 : 0}%`, background: c.color }} />
+                  </div>
+                  <p className="tabular mt-1.5 text-xs text-gris">
+                    {j.visitados.length} de {total} countries{j.salteados.length > 0 && ` · ${j.salteados.length} salteados`}
+                  </p>
+
+                  <div className="mt-3 rounded-lg bg-fondo px-3 py-2.5 text-sm">
+                    {j.enSitio ? (
+                      <p><span className="text-gris">Trabajando en </span><b className="font-semibold">{nombre(j.enSitio)}</b></p>
+                    ) : proxima ? (
+                      <p>
+                        <span className="text-gris">Próximo: </span><b className="font-semibold">{nombre(proxima.countryId)}</b>
+                        <span className="tabular text-gris"> · llega {hora(proxima.eta)}</span>
+                        {j.forzado === proxima.countryId && <span className="ml-1 text-xs font-semibold text-amber-700">(forzado)</span>}
+                      </p>
+                    ) : (
+                      <p className="text-gris">{j.estado === "pendiente" ? "Espera que el conductor inicie la jornada" : plan ? "Sin visitas pendientes" : "Sin ruta calculada"}</p>
+                    )}
+                    {plan && <p className="tabular mt-0.5 text-xs text-gris">{plan.paradas.length} paradas · {plan.kmTotales} km · {Math.round(plan.minutosTotales / 6) / 10} h · actualizada {hora(plan.creadoAt)}</p>}
+                    {plan?.sugerencia && <p className="mt-1.5 text-xs text-amber-800">{plan.sugerencia.mensaje}</p>}
+                  </div>
+
+                  {j.estado === "activa" && (
+                    <div className="mt-3 flex items-center gap-2">
+                      <select
+                        aria-label="Próximo destino"
+                        className="h-9 min-w-0 flex-1 rounded-lg border border-linea bg-white px-2 text-sm"
+                        value={j.forzado ?? ""}
+                        onChange={(ev) => setForzar({ cam: c.id, country: ev.target.value })}
+                      >
+                        <option value="">Próximo destino: automático</option>
+                        {pendientes.map((x) => <option key={x} value={x}>Enviar primero a {nombre(x)}</option>)}
+                      </select>
+                      <Boton variante="secundario" disabled={!!calculando} onClick={() => recalcular(c.id)}>
+                        {calculando === c.id ? "Calculando…" : "Recalcular"}
+                      </Boton>
+                    </div>
+                  )}
+                </div>
+              </Tarjeta>
+            );
+          })}
+        </div>
+      </section>
+
+      <Confirmar
+        abierto={!!forzar}
+        titulo="Cambiar el próximo destino"
+        mensaje={forzar?.country
+          ? <>La ruta de <b>{e.camionetas.find((c) => c.id === forzar.cam)?.nombre}</b> se va a recalcular para ir primero a <b>{nombre(forzar.country)}</b>, aunque no sea lo óptimo. El conductor lo ve al instante.</>
+          : "La camioneta vuelve a seguir el orden óptimo calculado por el sistema."}
+        cerrar={() => setForzar(null)}
+        confirmar={async () => {
+          try {
+            await accion({ accion: "forzar", camionetaId: forzar!.cam, countryId: forzar!.country }, "Destino actualizado");
+          } catch (err) {
+            avisar(err instanceof Error ? err.message : "Error");
+          }
+          setForzar(null);
+        }}
+      />
+    </>
+  );
 }

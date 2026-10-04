@@ -22,9 +22,13 @@ export interface Country extends Punto {
   id: string;
   nombre: string;
   zona: string;
+  direccion?: string;
+  contacto?: string; // guardia / administración del barrio
+  notas?: string;
   facturacion: number; // ARS por mes
   ingresoMin: number; // minutos de ingreso por guardia
-  origen: "ficticio" | "vialseg";
+  activo: boolean;
+  origen: "ejemplo" | "manual" | "vialseg";
   idExterno?: string;
 }
 
@@ -32,8 +36,33 @@ export interface Equipo {
   id: string;
   countryId: string;
   producto: ProductoId;
-  ubicacion: string;
+  ubicacion: string; // descripción del lugar dentro del barrio
+  numeroSerie?: string;
+  instaladoAt?: string;
+  lat?: number;
+  lon?: number;
+  activo: boolean;
 }
+
+export type Rol = "admin" | "conductor";
+
+export interface Usuario {
+  id: string;
+  nombre: string;
+  rol: Rol;
+  usuario?: string; // login del administrador
+  telefono?: string;
+  hash: string; // contraseña (admin) o PIN (conductor), scrypt
+  sal: string;
+  version: number; // cambia al resetear la clave: invalida sesiones abiertas
+  activo: boolean;
+  debeCambiarClave?: boolean;
+  intentosFallidos?: number;
+  bloqueadoHasta?: string;
+  creadoAt: string;
+}
+
+export type UsuarioPublico = Omit<Usuario, "hash" | "sal" | "intentosFallidos" | "bloqueadoHasta">;
 
 export type EstadoFalla = "abierta" | "resuelta";
 
@@ -44,10 +73,11 @@ export interface Falla {
   tipoId: string;
   gravedad: number;
   descripcion?: string;
+  creadaPor?: string;
   abiertaAt: string;
   cerradaAt?: string;
   estado: EstadoFalla;
-  origen: "ficticio" | "admin" | "vialseg";
+  origen: "ejemplo" | "admin" | "vialseg";
   idExterno?: string;
 }
 
@@ -55,11 +85,11 @@ export interface Camioneta {
   id: string;
   nombre: string;
   patente: string;
-  conductor: string;
   color: string;
   base: Punto & { nombre: string };
   inicio: string; // "08:00"
   fin: string; // "17:00"
+  activa: boolean;
 }
 
 export interface Posicion extends Punto {
@@ -79,6 +109,7 @@ export interface Jornada {
   id: string; // `${fecha}_${camionetaId}`
   fecha: string;
   camionetaId: string;
+  conductorId?: string | null;
   countries: string[]; // asignados por el administrador
   estado: "pendiente" | "activa" | "finalizada";
   posicion?: Posicion;
@@ -92,6 +123,8 @@ export interface Jornada {
   iniciadaAt?: string;
   finalizadaAt?: string;
   matriz?: CacheMatriz;
+  // Última acción que el conductor puede deshacer (terminar o saltear).
+  deshacer?: { tipo: "terminado" | "salteado"; countryId: string; fallas: string[]; cierreId?: string; at: string } | null;
 }
 
 export interface Parada {
@@ -129,11 +162,14 @@ export interface Plan {
   sugerencia?: { countryId: string; mensaje: string } | null;
 }
 
-export type TipoEvento = "inicio" | "ir" | "llegue" | "terminado" | "salteado" | "fin" | "falla_nueva" | "asignacion";
+export type TipoEvento =
+  | "inicio" | "ir" | "llegue" | "cancelar_llegada" | "terminado" | "salteado" | "deshacer" | "fin" | "reabrir"
+  | "falla_nueva" | "falla_editada" | "plan_dia" | "alta" | "edicion" | "baja" | "sesion" | "datos";
 
 export interface Evento {
   id: string;
   at: string;
+  usuarioId?: string;
   camionetaId?: string;
   tipo: TipoEvento;
   countryId?: string;
@@ -144,6 +180,7 @@ export interface Cierre {
   id: string;
   at: string;
   camionetaId: string;
+  conductorId?: string;
   countryId: string;
   fallasResueltas: string[];
   fallasPendientes: string[];
@@ -168,6 +205,7 @@ export interface Parametros {
 }
 
 export interface DB {
+  usuarios: Usuario[];
   parametros: Parametros[];
   tipos_falla: TipoFalla[];
   countries: Country[];

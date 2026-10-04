@@ -2,26 +2,38 @@
 
 Sistema que le indica a cada conductor de Vialseg **a qué country ir después**, por cálculo y no por experiencia, y le da a la administración de Martínez una vista de todas las camionetas. Proyecto de consultoría de la materia Supply Chain (ITBA), unidad *Redes de Distribución*.
 
-> Rama `v2/base-nueva`: reescritura completa. El prototipo anterior (un solo `app.py`) quedó en [`legacy/`](legacy/) como referencia. Datos **ficticios**: countries, coordenadas, equipos y fallas son simulados.
+> Rama `v2/base-nueva`: reescritura completa. El prototipo anterior (un solo `app.py`) quedó en [`legacy/`](legacy/) como referencia. Hasta recibir los datos reales de Vialseg, el sistema arranca con datos de ejemplo (countries, equipos, fallas y conductores).
 
 ## Qué hace
 
-| Vista | Para quién | Qué ve |
+Ingreso único en `/login` con dos roles. Cada rol solo accede a su sección: lo controla `proxy.ts` antes de mostrar la página y, además, cada ruta de API valida la sesión contra la base.
+
+| Rol | Cómo entra | Qué usa |
 |---|---|---|
-| `/admin` | Administración (Martínez) | Mapa con todos los countries coloreados por gravedad, recorrido de cada camioneta en su color, KPIs, asignación del día, carga de fallas, análisis de red, auditoría y parámetros |
-| `/conductor/c1` … `c3` | Conductor (celular) | Solo su próximo destino, botón **Ir con Waze**, **Llegué**, **Terminé** (cierre con foto opcional) y **No puedo ir** |
-| `/` | Todos | Elección de perfil |
+| Administración | Usuario y contraseña (mín. 8 caracteres) | Panel `/admin` |
+| Conductor | Elige su nombre y pone su PIN de 4 números | App `/conductor` en el celular (instalable) |
 
-Flujo de un día:
+**Panel de administración** (menú lateral):
 
-1. El administrador asigna a cada camioneta los countries del día (a mano, o con **Sugerir con el modelo**).
-2. El conductor toca **Iniciar jornada**: se toma su ubicación GPS y se calcula su recorrido óptimo.
-3. **Ir con Waze** abre Waze con el destino cargado (sin API, por link). Ese destino queda fijo.
-4. **Llegué** → ve las fallas del country → **Terminé** (qué quedó resuelto, trabajos, foto opcional). Se recalcula **desde ese country**.
-5. Mientras la jornada está activa, cada 10 minutos el celular pide recalcular con el tráfico. Si por tráfico conviene otro destino y ahorra más que el umbral (10 min), se le **sugiere**; no se le cambia solo.
-6. Si no puede entrar a un country, **No puedo ir** + motivo: la falla queda pendiente y se recalcula.
-7. Si se carga una falla nueva en un country asignado a una camioneta en ruta, esa ruta se recalcula sola.
-8. Sin señal: la app muestra el último plan, guarda las acciones en una bandeja de salida y las envía al volver la conexión.
+| Sección | Para qué |
+|---|---|
+| En vivo | Mapa con los countries por gravedad, recorrido de cada camioneta en su color, posición, próximo destino, KPIs. Forzar el próximo destino (con confirmación) y recalcular |
+| Planificación | Para hoy o días próximos: qué conductor maneja cada camioneta y qué countries atiende. Se edita con **Editar plan**, se revisa el resumen de cambios y se confirma. "Sugerir distribución" usa el modelo de asignación. No deja quitar countries ya atendidos ni poner un conductor o un country en dos camionetas |
+| Fallas | Abiertas y resueltas, filtros, alta (country, equipo, tipo, gravedad), edición, resolver, reabrir, eliminar |
+| Countries y equipos | Alta, edición y baja de countries (ubicación con clic en el mapa, contacto, indicaciones para el conductor) y de sus equipos (producto, ubicación, n.º de serie, instalación). Ficha con fallas y visitas |
+| Flota | Camionetas: patente, color, base y horario de jornada; sacar de servicio |
+| Usuarios | Conductores (PIN) y administradores (contraseña): alta, edición, resetear acceso, desactivar |
+| Análisis | Tasa de falla por producto y ubicación óptima de la base |
+| Auditoría | Toda acción con usuario y hora, cada ruta calculada y cada visita (con foto) |
+| Configuración | Criterios de ruteo, gravedad por tipo de falla, app de navegación, carga y borrado de datos |
+
+**App del conductor** (tres pestañas):
+
+- **Ahora:** próximo destino, **Ir con Waze** (o Google Maps), **Llegué**, fallas del lugar y **Terminé** (qué quedó resuelto, trabajos, foto opcional) o **No pude**. Deshacer la última visita o salteo (30 min) y "Todavía no llegué".
+- **Recorrido:** mapa y lista del día: atendidos, próximo, pendientes con hora estimada, salteados y los que no entran.
+- **Mi día:** resumen y visitas cerradas; finalizar jornada. Una jornada finalizada se puede reabrir el mismo día; al día siguiente arranca la que planifique administración.
+
+Recálculo: al iniciar, al terminar o saltear, ante una falla nueva en un country de su ruta, por cambios de administración y cada 10 minutos con la jornada activa (tráfico). Si por tráfico conviene otro destino que ahorra más del umbral, se le **sugiere**; no se le cambia solo. Sin señal: se ve el último recorrido y las acciones quedan en una bandeja de salida.
 
 ## Arquitectura
 
@@ -35,9 +47,10 @@ Navegador (Next.js / React)            Servidor (Next.js, rutas /api)           
 
 | Carpeta | Contenido |
 |---|---|
-| `app/` | Páginas (`/`, `/admin`, `/conductor/[id]`), rutas de API, manifest PWA |
-| `components/` | `admin/*` (panel), `conductor/ConductorApp.tsx`, `Mapa.tsx` |
-| `lib/` | Dominio: `types.ts`, `catalogo.ts` (productos y gravedades), `seed.ts` (datos ficticios), `premio.ts` (valoración), `motor.ts` (orquestación), `rutas.ts` (tiempos de viaje), `store.ts` (almacenamiento), `acciones.ts` |
+| `app/` | `login/`, `admin/*` (una carpeta por sección), `conductor/`, rutas de API (`api/auth`, `api/admin`, `api/conductor`), manifest PWA |
+| `proxy.ts` | Control de acceso por rol antes de renderizar |
+| `components/` | `admin/` (layout, datos compartidos, formularios), `conductor/ConductorApp.tsx`, `ui.tsx`, mapas (Leaflet) |
+| `lib/` | Dominio: `types.ts`, `catalogo.ts` (productos y gravedades), `seed.ts` (datos ficticios), `premio.ts` (valoración), `motor.ts` (orquestación), `rutas.ts` (tiempos de viaje), `store.ts` (almacenamiento), `acciones.ts` (reglas de negocio y validaciones), `auth.ts` / `sesion.ts` / `clave.ts` / `cuentas.ts` (acceso) |
 | `api/` | Optimizador en Python: `index.py` (FastAPI) y `_modelos/` (`ruteo.py`, `asignacion.py`, `gravedad.py`) |
 | `supabase/migrations/` | Esquema de la base |
 | `tests/` | Pruebas de los modelos |
@@ -84,7 +97,7 @@ npm run dev
 
 Abrir **http://localhost:3000** (usar `localhost`, no `127.0.0.1`, por las protecciones de Next en desarrollo).
 
-Sin Supabase, los datos se guardan en `.data/db.json`. **Parámetros → Reiniciar demo** vuelve a los datos iniciales.
+Sin Supabase, los datos se guardan en `.data/db.json`. La primera vez se cargan datos de ejemplo y se crea el usuario **admin** con la contraseña `ADMIN_CLAVE_INICIAL` (por defecto `vialseg2026`; se pide cambiarla al entrar). Conductores de ejemplo: "Conductor 1/2/3" con PIN 1111/2222/3333. **Configuración → Datos** permite borrar todo para cargar los datos reales.
 
 Pruebas:
 
@@ -108,6 +121,8 @@ El proyecto se sube desde la carpeta local con la CLI (no depende de permisos en
 ```bash
 npx vercel login
 npx vercel            # primera vez: crea el proyecto (preview)
+npx vercel env add SESSION_SECRET production
+npx vercel env add ADMIN_CLAVE_INICIAL production
 npx vercel env add SUPABASE_URL production
 npx vercel env add SUPABASE_SERVICE_ROLE_KEY production
 npx vercel env add GOOGLE_MAPS_API_KEY production   # opcional
@@ -118,7 +133,6 @@ Vercel construye Next.js y publica `api/index.py` como función de Python (`requ
 
 ## Limitaciones conocidas
 
-- Sin contraseñas: se elige el perfil en `/`. Pendiente: Supabase Auth con roles.
 - GPS solo cuando la app está abierta (una web no puede seguir la ubicación en segundo plano).
 - Sin tráfico mientras no haya clave de Google; OSRM público no garantiza disponibilidad.
 - Fuera del horario de jornada (por ejemplo, en una demo de noche) se planifica una jornada completa desde ahora.

@@ -148,7 +148,7 @@ export async function planificar(origin: string, camionetaId: string, motivo: Mo
   };
   const nuevaCache: CacheMatriz = { ids, min: m.min, km: m.km, at: motivo === "periodico" && cache ? cache.at : ahora.toISOString(), proveedor: m.proveedor };
   await s.guardar("planes", [plan]);
-  await s.guardar("jornadas", [{ ...jornada, posicion: desde.fuente === "country" ? jornada.posicion : desde, planId: plan.id, ultimoCalculo: plan.creadoAt, matriz: nuevaCache }]);
+  await s.guardar("jornadas", [{ ...jornada, posicion: desde, planId: plan.id, ultimoCalculo: plan.creadoAt, matriz: nuevaCache }]);
   return plan;
 }
 
@@ -157,18 +157,19 @@ export async function sugerirAsignacion(origin: string) {
   const db = await store().leer();
   const p = parametros(db);
   const val = valorar(db, p);
-  const conFallas = db.countries.filter((c) => (val.get(c.id)?.fallas.length ?? 0) > 0);
-  const m = await matriz([...db.camionetas.map((c) => c.base), ...conFallas]);
-  const n = db.camionetas.length;
-  const fijos = db.camionetas.flatMap((cam) => {
+  const conFallas = db.countries.filter((c) => c.activo !== false && (val.get(c.id)?.fallas.length ?? 0) > 0);
+  const camionetas = db.camionetas.filter((c) => c.activa !== false);
+  const m = await matriz([...camionetas.map((c) => c.base), ...conFallas]);
+  const n = camionetas.length;
+  const fijos = camionetas.flatMap((cam) => {
     const j = jornadaDe(db, cam.id);
     return j.estado === "activa" ? [...j.visitados, ...(j.enSitio ? [j.enSitio] : [])].map((country) => ({ camioneta: cam.id, country })) : [];
   });
   const r = await optimizador<{ estado: string; asignacion: Record<string, string[]>; sin_asignar: string[]; carga_minutos: Record<string, number>; objetivo: number; segundos: number }>(
     origin, "asignacion", {
-      camionetas: db.camionetas.map((c) => ({ id: c.id, capacidad: Math.round((aMinutos(c.fin) - aMinutos(c.inicio)) * HOLGURA), costo_fijo: p.costoFijoCamioneta })),
+      camionetas: camionetas.map((c) => ({ id: c.id, capacidad: Math.round((aMinutos(c.fin) - aMinutos(c.inicio)) * HOLGURA), costo_fijo: p.costoFijoCamioneta })),
       countries: conFallas.map((c) => ({ id: c.id, premio: val.get(c.id)!.premio, servicio: val.get(c.id)!.servicioMin })),
-      tiempos: db.camionetas.map((_, i) => conFallas.map((_, j) => Math.round(m.min[i][n + j]))),
+      tiempos: camionetas.map((_, i) => conFallas.map((_, j) => Math.round(m.min[i][n + j]))),
       costo_minuto: p.costoMinuto,
       fijos: fijos.filter((f) => conFallas.some((c) => c.id === f.country)),
     });

@@ -2,6 +2,23 @@
 
 Qué se decidió, por qué y qué queda pendiente. Agregar una entrada por cada decisión nueva (la más reciente arriba).
 
+## 2026-10-04 · Orientación a producción
+
+Revisión del equipo: la v2 parecía una demo. Se rehízo la interfaz y se agregaron accesos y gestión.
+
+| # | Decisión | Motivo |
+|---|---|---|
+| 17 | Login con roles: administración con usuario y contraseña; conductores con nombre + PIN de 4 números | Elegido por el equipo: rápido en la calle y suficiente para uso interno. Bloqueo de 10 min tras 5 intentos fallidos |
+| 18 | Sesión en cookie firmada (HMAC, `SESSION_SECRET`) con versión del usuario; `proxy.ts` + validación en cada API | Un conductor no puede entrar al panel. Resetear el acceso o desactivar a alguien cierra sus sesiones |
+| 19 | Administrador inicial `admin` con cambio de contraseña obligatorio | No dejar una clave por defecto en uso |
+| 20 | Nada fijo en el código: conductores, camionetas, countries y equipos se administran desde el panel | Pedido del equipo |
+| 21 | El conductor se asigna por día y camioneta en Planificación (también días próximos) | Cada día puede manejar otra persona y hacer otros countries |
+| 22 | Planificación con modo edición, resumen de cambios y confirmación; validaciones en el servidor | Elegido por el equipo, para evitar errores de administración |
+| 23 | El conductor puede deshacer (30 min), cancelar una llegada y reabrir la jornada el mismo día | Elegido por el equipo; corrige toques por error |
+| 24 | Arranca con datos de ejemplo y un botón para borrarlos | Elegido por el equipo, hasta tener los datos reales |
+| 25 | Interfaz sin textos académicos; la marca solo en el login y el panel | Lo usa personal de la empresa, no es una presentación |
+| 26 | Bajas lógicas (countries, equipos, camionetas, usuarios) | Conservar historial y auditoría |
+
 ## 2026-10-03 · Reescritura v2 (rama `v2/base-nueva`)
 
 | # | Decisión | Motivo |
@@ -20,7 +37,7 @@ Qué se decidió, por qué y qué queda pendiente. Agregar una entrada por cada 
 | 12 | Almacenamiento por documentos (`vialseg_docs`: colección, id, jsonb) en Supabase, o archivo local | Una sola interfaz (`lib/store.ts`) y una migración simple. Pendiente: normalizar tablas cuando se conecte Vialseg |
 | 13 | Foto opcional en el cierre | Pedido del equipo |
 | 14 | Saltear con motivo (no me dejan entrar, cerrado, no llego, otro) | El conductor puede negarse a un destino |
-| 15 | Sin contraseñas por ahora (elección de perfil) | Prioridad: la demo. Pendiente: Supabase Auth con roles |
+| 15 | Sin contraseñas (reemplazada por la #17) | — |
 | 16 | Modo sin señal: último plan guardado + bandeja de salida | En los countries suele no haber señal |
 
 ### Fuera de alcance (por decisión del equipo)
@@ -29,9 +46,9 @@ Horarios y autorizaciones de proveedores en cada barrio; repuestos y habilidades
 
 ### Pendiente para producción
 
-- **Lista real de countries donde opera Vialseg**: todavía no la tenemos (llega en unos días). Los 24 countries de `lib/seed.ts` (nombres, coordenadas, facturación y equipos) son inventados, igual que los del prototipo v1. Al recibirla, reemplazar el arreglo `COUNTRIES` de `lib/seed.ts` y hacer "Reiniciar demo".
+- **Lista real de countries donde opera Vialseg**: todavía no la tenemos (llega en unos días). Los 24 countries de `lib/seed.ts` (nombres, coordenadas, facturación y equipos) son inventados, igual que los del prototipo v1. Al recibirla: Configuración → Borrar datos operativos, y cargar countries y equipos desde el panel (o pedir una importación desde Excel).
 - Conectar la plataforma de Vialseg (importador de fallas, countries y equipos con `origen: "vialseg"`).
 - Clave de Google Routes para tráfico en vivo.
-- Supabase Auth (roles admin / conductor) y Storage para las fotos.
+- Supabase Storage para las fotos (hoy van comprimidas dentro del registro).
 - GPS real de cada equipo y acceso; facturación real por cliente.
 - Validar con Vialseg las gravedades del catálogo y los tiempos de servicio.

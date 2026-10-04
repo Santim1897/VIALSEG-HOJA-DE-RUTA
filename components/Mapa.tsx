@@ -18,6 +18,8 @@ export interface DatosMapa {
   asignado: Record<string, string>; // countryId → camionetaId
   centro?: { lat: number; lon: number } | null;
   visibles: Record<string, boolean>;
+  conductores?: Record<string, string>; // camionetaId → nombre del conductor del día
+  extras?: { lat: number; lon: number; nombre: string }[];
 }
 
 const icono = (html: string, tam: number) => L.divIcon({ className: "pin", html, iconSize: [tam, tam], iconAnchor: [tam / 2, tam / 2] });
@@ -29,7 +31,7 @@ const iconoBase = icono(`<div style="width:16px;height:16px;transform:rotate(45d
 const iconoCentro = icono(`<div style="width:26px;height:26px;border-radius:50%;border:3px dashed #0b1424;background:#ffffffcc"></div>`, 26);
 
 export default function Mapa({ datos, alto = 520 }: { datos: DatosMapa; alto?: number | string }) {
-  const { countries, fallas, equipos, tipos, camionetas, planes, posiciones, asignado, centro, visibles } = datos;
+  const { countries, fallas, equipos, tipos, camionetas, planes, posiciones, asignado, centro, visibles, conductores = {}, extras = [] } = datos;
   const abiertas = (id: string) => fallas.filter((f) => f.countryId === id && f.estado === "abierta");
   const bases = [...new Map(camionetas.map((c) => [`${c.base.lat},${c.base.lon}`, c.base])).values()];
 
@@ -47,7 +49,7 @@ export default function Mapa({ datos, alto = 520 }: { datos: DatosMapa; alto?: n
         ) : null;
       })}
 
-      {countries.map((c) => {
+      {countries.filter((c) => c.activo !== false).map((c) => {
         const fs = abiertas(c.id);
         const g = Math.max(0, ...fs.map((f) => f.gravedad));
         const cam = camionetas.find((k) => k.id === asignado[c.id]);
@@ -110,10 +112,16 @@ export default function Mapa({ datos, alto = 520 }: { datos: DatosMapa; alto?: n
         const pos = posiciones[c.id];
         return pos ? (
           <Marker key={`cam-${c.id}`} position={[pos.lat, pos.lon]} icon={iconoCamioneta(c.color)} zIndexOffset={1000}>
-            <Tooltip direction="top" offset={[0, -14]}>{`${c.nombre} · ${c.conductor} · ${hora(pos.at)}`}</Tooltip>
+            <Tooltip direction="top" offset={[0, -14]}>{`${c.nombre}${conductores[c.id] ? ` · ${conductores[c.id]}` : ""} · ${hora(pos.at)}`}</Tooltip>
           </Marker>
         ) : null;
       })}
+
+      {extras.map((x) => (
+        <CircleMarker key={x.nombre} center={[x.lat, x.lon]} radius={6} pathOptions={{ color: "#0b1424", weight: 2, fillColor: "#ffffff", fillOpacity: 1 }}>
+          <Tooltip direction="top">{x.nombre}</Tooltip>
+        </CircleMarker>
+      ))}
 
       {centro && (
         <Marker position={[centro.lat, centro.lon]} icon={iconoCentro} zIndexOffset={900}>

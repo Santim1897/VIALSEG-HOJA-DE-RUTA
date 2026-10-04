@@ -22,7 +22,7 @@ export function valorar(db: DB, p: Parametros, ahora = Date.now()): Map<string, 
   const res = new Map<string, Valoracion>();
   for (const c of db.countries) {
     const fallas = abiertas.filter((f) => f.countryId === c.id);
-    const equipos = db.equipos.filter((e) => e.countryId === c.id).length;
+    const equipos = db.equipos.filter((e) => e.countryId === c.id && e.activo !== false).length;
     const rotos = new Set(fallas.map((f) => f.equipoId)).size;
     const pctRotos = equipos ? rotos / equipos : 0;
     const gravedadPonderada = fallas.reduce(

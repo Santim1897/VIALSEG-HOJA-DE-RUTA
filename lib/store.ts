@@ -6,7 +6,7 @@ import "server-only";
 import { promises as fs } from "fs";
 import path from "path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { datosIniciales } from "./seed";
+import { adminInicial, datosEjemplo } from "./seed";
 import type { Coleccion, DB } from "./types";
 
 export interface Store {
@@ -17,7 +17,7 @@ export interface Store {
   reiniciar(db: DB): Promise<void>;
 }
 
-const COLECCIONES: Coleccion[] = ["parametros", "tipos_falla", "countries", "equipos", "fallas", "camionetas", "jornadas", "planes", "eventos", "cierres"];
+const COLECCIONES: Coleccion[] = ["usuarios", "parametros", "tipos_falla", "countries", "equipos", "fallas", "camionetas", "jornadas", "planes", "eventos", "cierres"];
 const vacia = (): DB => Object.fromEntries(COLECCIONES.map((c) => [c, []])) as unknown as DB;
 
 // ---------------------------------------------------------------- Supabase
@@ -37,10 +37,14 @@ class StoreSupabase implements Store {
       if (!data || data.length < 1000) break;
       desde += 1000;
     }
-    if (!db.countries.length) {
-      const inicial = datosIniciales();
+    if (!db.usuarios.length && !db.countries.length) {
+      const inicial = datosEjemplo();
       await this.reiniciar(inicial);
       return inicial;
+    }
+    if (!db.usuarios.some((u) => u.rol === "admin")) {
+      db.usuarios.push(adminInicial());
+      await this.guardar("usuarios", db.usuarios);
     }
     return db;
   }
@@ -80,9 +84,14 @@ class StoreArchivo implements Store {
   }
   private async cargar(): Promise<DB> {
     try {
-      return { ...vacia(), ...JSON.parse(await fs.readFile(this.archivo, "utf8")) };
+      const db: DB = { ...vacia(), ...JSON.parse(await fs.readFile(this.archivo, "utf8")) };
+      if (!db.usuarios.some((u) => u.rol === "admin")) {
+        db.usuarios.push(adminInicial());
+        await this.escribir(db);
+      }
+      return db;
     } catch {
-      const db = datosIniciales();
+      const db = datosEjemplo();
       await this.escribir(db);
       return db;
     }
