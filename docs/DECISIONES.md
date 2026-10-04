@@ -10,6 +10,7 @@ Qué se decidió, por qué y qué queda pendiente. Agregar una entrada por cada 
 | 28 | Tiempo por equipo con falla: 20 min en total, incluido el manejo dentro del barrio (antes 11 min); se mantiene el ingreso por guardia por country | Dato del equipo |
 | 29 | Se quita el modelo de centro de gravedad (ubicación óptima de la base) | La sede es fija: el análisis no aporta a la operación |
 | 30 | Cuadro "Cómo se decide el recorrido" en Configuración, con los valores vigentes | Que los criterios no queden solo en el código |
+| 31 | Si un día no está planificado, cada camioneta arranca con el conductor del último día planificado y los countries que siguen con fallas abiertas; administración lo puede cambiar | Que nadie empiece el día sin recorrido. Pedido del equipo |
 
 ## 2026-10-04 · Orientación a producción
 

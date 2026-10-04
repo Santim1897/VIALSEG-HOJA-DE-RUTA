@@ -16,12 +16,26 @@ const HOLGURA = 0.85;
 export const parametros = (db: DB) => ({ ...PARAMETROS_INICIALES, ...db.parametros[0] });
 export const idJornada = (camionetaId: string, fecha = hoy()) => `${fecha}_${camionetaId}`;
 
+/**
+ * Jornada de una camioneta para una fecha. Si administración todavía no la planificó, se propone
+ * la del último día planificado: mismo conductor y los countries que siguen con fallas abiertas.
+ * Se guarda recién cuando el conductor la inicia o administración la confirma en Planificación.
+ */
 export function jornadaDe(db: DB, camionetaId: string, fecha = hoy()): Jornada {
-  return (
-    db.jornadas.find((j) => j.id === idJornada(camionetaId, fecha)) ?? {
-      id: idJornada(camionetaId, fecha), fecha, camionetaId, countries: [], estado: "pendiente", salteados: [], visitados: [],
-    }
-  );
+  const existente = db.jornadas.find((j) => j.id === idJornada(camionetaId, fecha));
+  if (existente) return existente;
+  const previa = db.jornadas
+    .filter((j) => j.camionetaId === camionetaId && j.fecha < fecha && !j.heredado)
+    .sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
+  const conFallas = new Set(db.fallas.filter((f) => f.estado === "abierta").map((f) => f.countryId));
+  const activos = new Set(db.countries.filter((c) => c.activo !== false).map((c) => c.id));
+  const conductorActivo = db.usuarios.some((u) => u.id === previa?.conductorId && u.activo && u.rol === "conductor");
+  return {
+    id: idJornada(camionetaId, fecha), fecha, camionetaId, estado: "pendiente", salteados: [], visitados: [],
+    conductorId: conductorActivo ? previa!.conductorId : null,
+    countries: (previa?.countries ?? []).filter((c) => conFallas.has(c) && activos.has(c)),
+    heredado: !!previa,
+  };
 }
 
 async function optimizador<T>(origin: string, modelo: string, datos: unknown): Promise<T> {

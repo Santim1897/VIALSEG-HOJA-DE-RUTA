@@ -56,6 +56,7 @@ export default function Planificacion() {
     setBorrador(b);
   };
 
+  const heredado = e.jornadasPlan.some((j) => j.heredado);
   const cambios = e.camionetas.map((c) => {
     const a = actual[c.id];
     const n = vista[c.id];
@@ -66,6 +67,7 @@ export default function Planificacion() {
       menos: a.countries.filter((x) => !n.countries.includes(x)),
     };
   }).filter((x) => x.conductor !== undefined || x.mas.length || x.menos.length);
+  const puedeGuardar = cambios.length > 0 || heredado;
 
   async function sugerir() {
     setSugiriendo(true);
@@ -121,6 +123,7 @@ export default function Planificacion() {
         <p className="text-sm">
           <b className="font-semibold">{fechaLarga(fecha).replace(/^./, (l) => l.toUpperCase())}</b>
           {fecha === hoy() && <span className="text-gris"> · hoy</span>}
+          {!borrador && e.jornadasPlan.some((j) => j.heredado) && <span className="ml-2"><Etiqueta tono="azul">Copiado del último día planificado · revisalo y guardalo</Etiqueta></span>}
           {borrador && <span className="ml-2"><Etiqueta tono="ambar">Editando · {cambios.length} {cambios.length === 1 ? "camioneta modificada" : "camionetas modificadas"}</Etiqueta></span>}
         </p>
         <div className="flex flex-wrap gap-2">
@@ -130,7 +133,7 @@ export default function Planificacion() {
             <>
               <Boton variante="secundario" onClick={sugerir} disabled={sugiriendo}>{sugiriendo ? "Calculando…" : "Sugerir distribución"}</Boton>
               <Boton variante="fantasma" onClick={() => { setBorrador(null); setSugerencia(null); setError(""); }}>Descartar</Boton>
-              <Boton onClick={() => setConfirmar(true)} disabled={!cambios.length}>Revisar y guardar</Boton>
+              <Boton onClick={() => setConfirmar(true)} disabled={!puedeGuardar}>Revisar y guardar</Boton>
             </>
           )}
         </div>
@@ -232,6 +235,7 @@ export default function Planificacion() {
         confirmar={guardar}
         mensaje={
           <div className="space-y-3">
+            {heredado && cambios.length === 0 && <p>Se confirma el plan copiado del último día planificado, sin cambios.</p>}
             {cambios.map((x) => (
               <div key={x.c.id}>
                 <p className="font-semibold" style={{ color: x.c.color }}>{x.c.nombre}</p>

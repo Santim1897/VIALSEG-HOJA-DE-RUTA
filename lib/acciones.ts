@@ -19,7 +19,7 @@ function falla(m: string): never {
 
 // ================================================================== Conductor
 function jornadaDelConductor(db: DB, conductorId: string): Jornada | null {
-  return db.jornadas.find((j) => j.fecha === hoy() && j.conductorId === conductorId) ?? null;
+  return db.camionetas.filter((c) => c.activa !== false).map((c) => jornadaDe(db, c.id)).find((j) => j.conductorId === conductorId) ?? null;
 }
 
 export async function accionConductor(origin: string, actor: Usuario, cuerpo: Record<string, unknown>) {
@@ -29,7 +29,7 @@ export async function accionConductor(origin: string, actor: Usuario, cuerpo: Re
   const cam = j.camionetaId;
   const pos = cuerpo.pos as Posicion | undefined;
   const countryId = cuerpo.countryId as string | undefined;
-  const guardar = (cambios: Partial<Jornada>) => s.guardar("jornadas", [{ ...j, ...cambios }]);
+  const guardar = (cambios: Partial<Jornada>) => s.guardar("jornadas", [{ ...j, heredado: false, ...cambios }]);
   const registrar = (tipo: TipoEvento, extra: Partial<Evento> = {}) => s.guardar("eventos", [evento(tipo, actor, { camionetaId: cam, ...extra })]);
 
   if (j.estado !== "activa" && !["iniciar", "reabrir"].includes(String(cuerpo.accion))) falla("La jornada no está activa");
@@ -195,7 +195,7 @@ export async function accionAdmin(origin: string, actor: Usuario, cuerpo: Record
           const faltan = intocables.filter((c) => !p.countries.includes(c));
           if (faltan.length) falla(`${cam.nombre} ya atendió o está atendiendo ${faltan.map((c) => db.countries.find((x) => x.id === c)?.nombre).join(", ")}: no se puede quitar`);
         }
-        jornadas.push({ ...actual, conductorId: p.conductorId, countries: p.countries, forzado: p.countries.includes(actual.forzado ?? "") ? actual.forzado : null });
+        jornadas.push({ ...actual, heredado: false, conductorId: p.conductorId, countries: p.countries, forzado: p.countries.includes(actual.forzado ?? "") ? actual.forzado : null });
       }
       await s.guardar("jornadas", jornadas);
       await registrar("plan_dia", { detalle: String(cuerpo.resumen ?? `Plan del ${fecha} actualizado`) });

@@ -111,6 +111,7 @@ export interface Jornada {
   camionetaId: string;
   conductorId?: string | null;
   countries: string[]; // asignados por el administrador
+  heredado?: boolean; // todavía no guardado: copia del último día planificado
   estado: "pendiente" | "activa" | "finalizada";
   posicion?: Posicion;
   destinoFijo?: string | null; // el conductor tocó "Ir"

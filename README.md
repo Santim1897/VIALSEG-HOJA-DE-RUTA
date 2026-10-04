@@ -18,7 +18,7 @@ Ingreso único en `/login` con dos roles. Cada rol solo accede a su sección: lo
 | Sección | Para qué |
 |---|---|
 | En vivo | Mapa con los countries por gravedad, recorrido de cada camioneta en su color, posición, próximo destino, KPIs. Forzar el próximo destino (con confirmación) y recalcular |
-| Planificación | Para hoy o días próximos: qué conductor maneja cada camioneta y qué countries atiende. Se edita con **Editar plan**, se revisa el resumen de cambios y se confirma. "Sugerir distribución" usa el modelo de asignación. No deja quitar countries ya atendidos ni poner un conductor o un country en dos camionetas |
+| Planificación | Para hoy o días próximos: qué conductor maneja cada camioneta y qué countries atiende. Si un día no se planificó, se propone el del último día (mismo conductor y countries con fallas pendientes). Se edita con **Editar plan**, se revisa el resumen de cambios y se confirma. "Sugerir distribución" usa el modelo de asignación. No deja quitar countries ya atendidos ni poner un conductor o un country en dos camionetas |
 | Fallas | Abiertas y resueltas, filtros, alta (country, equipo, tipo, gravedad), edición, resolver, reabrir, eliminar |
 | Countries y equipos | Alta, edición y baja de countries (ubicación con clic en el mapa, contacto, indicaciones para el conductor) y de sus equipos (producto, ubicación, n.º de serie, instalación). Ficha con fallas y visitas |
 | Flota | Camionetas: patente, color, base y horario de jornada; sacar de servicio |
