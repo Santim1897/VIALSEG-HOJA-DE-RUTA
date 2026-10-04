@@ -115,6 +115,8 @@ La tabla tiene RLS activado sin políticas: solo el servidor (con la `service_ro
 
 ## Deploy en Vercel
 
+Producción: **https://vialseg-hoja-de-ruta.vercel.app** (proyecto `vialseg-hoja-de-ruta` en la cuenta de Vercel de Gonzalo). `.vercelignore` excluye los `.env*` locales para que no lleguen al servidor.
+
 El proyecto se sube desde la carpeta local con la CLI (no depende de permisos en el repo de GitHub):
 
 ```bash
