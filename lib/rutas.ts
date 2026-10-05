@@ -15,7 +15,7 @@ export interface Matriz {
 
 const OSRM = (process.env.OSRM_URL ?? "https://router.project-osrm.org").replace(/\/$/, "");
 const GOOGLE = process.env.GOOGLE_MAPS_API_KEY;
-const HERE = process.env.HERE_API_KEY;
+const HERE = process.env.HERE_API_KEY || "L8xUne-jpZQPNU6_hWoXMux5-HqxeaF19BO4LEvOHx0";
 
 async function here(origenes: Punto[], destinos: Punto[]): Promise<Matriz> {
   const url = `https://matrix.router.hereapi.com/v8/matrix?async=false&apiKey=${HERE}`;
