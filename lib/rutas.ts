@@ -15,6 +15,56 @@ export interface Matriz {
 
 const OSRM = (process.env.OSRM_URL ?? "https://router.project-osrm.org").replace(/\/$/, "");
 const GOOGLE = process.env.GOOGLE_MAPS_API_KEY;
+const HERE = process.env.HERE_API_KEY || "L8xUne-jpZQPNU6_hWoXMux5-HqxeaF19BO4LEvOHx0";
+
+async function here(origenes: Punto[], destinos: Punto[]): Promise<Matriz> {
+  const url = `https://matrix.router.hereapi.com/v8/matrix?async=false&apiKey=${HERE}`;
+  const depTime = new Date().toISOString();
+  const min: number[][] = [];
+  const km: number[][] = [];
+
+  // HERE admite un máximo de 15 orígenes por llamada síncrona
+  const batchSize = 15;
+  for (let start = 0; start < origenes.length; start += batchSize) {
+    const chunk = origenes.slice(start, start + batchSize);
+    const payload = {
+      origins: chunk.map((p) => ({ lat: p.lat, lng: p.lon })),
+      destinations: destinos.map((p) => ({ lat: p.lat, lng: p.lon })),
+      regionDefinition: { type: "world" },
+      transportMode: "car",
+      matrixAttributes: ["travelTimes", "distances"],
+      departureTime: depTime,
+    };
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) throw new Error(`HERE Matrix ${res.status}`);
+    const data = await res.json();
+    const m = data.matrix ?? {};
+    const times: number[] = m.travelTimes ?? [];
+    const dists: number[] = m.distances ?? [];
+    const errors: number[] = m.errorCodes ?? [];
+
+    for (let i = 0; i < chunk.length; i++) {
+      const rowMin: number[] = [];
+      const rowKm: number[] = [];
+      for (let j = 0; j < destinos.length; j++) {
+        const idx = i * destinos.length + j;
+        const hasErr = idx < errors.length && errors[idx] !== 0;
+        rowMin.push(hasErr ? 0 : (times[idx] ?? 0) / 60);
+        rowKm.push(hasErr ? 0 : (dists[idx] ?? 0) / 1000);
+      }
+      min.push(rowMin);
+      km.push(rowKm);
+    }
+  }
+
+  return { min, km, proveedor: "HERE Routing (tráfico en vivo)", conTrafico: true };
+}
 
 async function google(origenes: Punto[], destinos: Punto[]): Promise<Matriz> {
   const wp = (p: Punto) => ({ waypoint: { location: { latLng: { latitude: p.lat, longitude: p.lon } } } });
@@ -63,6 +113,13 @@ function estimada(origenes: Punto[], destinos: Punto[]): Matriz {
 
 /** Matriz completa de tiempos (min) y distancias (km) entre todos los puntos. */
 export async function matriz(puntos: Punto[]): Promise<Matriz> {
+  if (HERE) {
+    try {
+      return await here(puntos, puntos);
+    } catch (e) {
+      console.warn("HERE Matrix falló, uso siguiente proveedor:", e);
+    }
+  }
   if (GOOGLE) {
     try {
       return await google(puntos, puntos);
@@ -80,6 +137,13 @@ export async function matriz(puntos: Punto[]): Promise<Matriz> {
 
 /** Solo la fila "desde donde estoy hasta cada punto": es lo que cambia con el tráfico cada 10 minutos. */
 export async function fila(origen: Punto, destinos: Punto[]): Promise<Matriz> {
+  if (HERE) {
+    try {
+      return await here([origen], destinos);
+    } catch (e) {
+      console.warn("HERE Matrix fila falló, uso siguiente proveedor:", e);
+    }
+  }
   if (GOOGLE) {
     try {
       return await google([origen], destinos);
