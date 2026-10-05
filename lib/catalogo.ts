@@ -49,8 +49,15 @@ export const PARAMETROS_INICIALES: Parametros = {
   navegador: "waze",
 };
 
-export const COLOR_GRAVEDAD = ["#94a3b8", "#facc15", "#facc15", "#fb923c", "#ef4444", "#dc2626"];
-export const NOMBRE_GRAVEDAD = ["Sin fallas", "Leve", "Baja", "Media", "Alta", "Crítica"];
+// Urgencias: exactamente 3 categorías (Leve: amarillo, Media: naranja, Crítica: rojo fuerte)
+export const COLOR_GRAVEDAD = ["#94a3b8", "#eab308", "#eab308", "#f97316", "#dc2626", "#dc2626"];
+export const NOMBRE_GRAVEDAD = ["Sin fallas", "Leve", "Leve", "Media", "Crítica", "Crítica"];
+
+export const NIVELES_URGENCIA = [
+  { valor: 1, nombre: "Leve", color: "#eab308" },
+  { valor: 3, nombre: "Media", color: "#f97316" },
+  { valor: 5, nombre: "Crítica", color: "#dc2626" },
+] as const;
 
 export const MOTIVOS_SALTEO = ["No me dejan entrar", "Barrio cerrado", "No llego a tiempo", "Otro"];
 export const TRABAJOS = ["Reinicio", "Calibración", "Cambio de pieza", "Limpieza", "Conexión / cableado", "Configuración", "Otro"];

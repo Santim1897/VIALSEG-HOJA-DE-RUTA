@@ -59,13 +59,19 @@ export function NuevaFalla({ abierto, cerrar, countryId: inicialCountry = "", eq
           </select>
         </Campo>
         <Campo etiqueta="Gravedad" ayuda={tipo ? `Según el catálogo: ${NOMBRE_GRAVEDAD[tipo.gravedad]}. Podés ajustarla.` : undefined}>
-          <div className="grid grid-cols-5 gap-1.5">
-            {[1, 2, 3, 4, 5].map((g) => {
-              const activo = (gravedad ?? tipo?.gravedad) === g;
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { g: 1, label: "Leve", color: "#eab308" },
+              { g: 3, label: "Media", color: "#f97316" },
+              { g: 5, label: "Crítica", color: "#dc2626" },
+            ].map(({ g, label, color }) => {
+              const valorActual = gravedad ?? tipo?.gravedad;
+              const activo = valorActual === g || (g === 1 && valorActual === 2) || (g === 5 && valorActual === 4);
               return (
                 <button key={g} type="button" disabled={!tipo} onClick={() => setGravedad(g)}
-                  className={`rounded-lg border px-1 py-2 text-xs font-semibold transition disabled:opacity-40 ${activo ? "border-noche bg-noche text-white" : "border-linea hover:border-slate-300"}`}>
-                  {NOMBRE_GRAVEDAD[g]}
+                  className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-semibold transition disabled:opacity-40 ${activo ? "border-noche bg-noche text-white shadow-sm" : "border-linea hover:border-slate-300"}`}>
+                  <span className="h-2 w-2 rounded-full" style={{ background: color }} />
+                  {label}
                 </button>
               );
             })}

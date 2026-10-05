@@ -23,7 +23,7 @@ export default function Fallas() {
   const equipo = (id: string) => e.equipos.find((x) => x.id === id);
   const country = (id: string) => e.countries.find((x) => x.id === id);
   const lista = e.fallas
-    .filter((f) => f.estado === estadoF && f.gravedad >= gravedad && (!producto || equipo(f.equipoId)?.producto === producto))
+    .filter((f) => f.estado === estadoF && (!gravedad || (gravedad === 1 ? f.gravedad <= 2 : gravedad === 3 ? f.gravedad === 3 : f.gravedad >= 4)) && (!producto || equipo(f.equipoId)?.producto === producto))
     .filter((f) => !busqueda || country(f.countryId)?.nombre.toLowerCase().includes(busqueda.toLowerCase()))
     .sort((a, b) => (estadoF === "abierta" ? b.gravedad - a.gravedad || a.abiertaAt.localeCompare(b.abiertaAt) : (b.cerradaAt ?? "").localeCompare(a.cerradaAt ?? "")));
 
@@ -46,9 +46,9 @@ export default function Fallas() {
           </select>
           <select className={`${campo} w-auto`} value={gravedad} onChange={(ev) => setGravedad(Number(ev.target.value))}>
             <option value={0}>Toda gravedad</option>
-            <option value={3}>Media o más</option>
-            <option value={4}>Alta o crítica</option>
-            <option value={5}>Solo crítica</option>
+            <option value={1}>Leve</option>
+            <option value={3}>Media</option>
+            <option value={5}>Crítica</option>
           </select>
         </div>
         {lista.length === 0 ? (

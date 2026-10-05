@@ -47,6 +47,7 @@ __pycache__/
 
 # datos locales de desarrollo
 .data/
+.local/
 
 # env (ver .env.example)
 .env*

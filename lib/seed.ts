@@ -34,9 +34,9 @@ const COUNTRIES: [string, string, number, number, number][] = [
 
 
 export const CAMIONETAS: Camioneta[] = [
-  { id: "c1", nombre: "Camioneta 1", patente: "", color: "#00a5d5", inicio: "08:00", fin: "17:00", activa: true },
-  { id: "c2", nombre: "Camioneta 2", patente: "", color: "#83c735", inicio: "08:00", fin: "17:00", activa: true },
-  { id: "c3", nombre: "Camioneta 3", patente: "", color: "#f59e0b", inicio: "08:00", fin: "17:00", activa: true },
+  { id: "c1", nombre: "Camioneta 1", patente: "", color: "#1d4ed8", inicio: "08:00", fin: "17:00", activa: true }, // Azul
+  { id: "c2", nombre: "Camioneta 2", patente: "", color: "#16a34a", inicio: "08:00", fin: "17:00", activa: true }, // Verde
+  { id: "c3", nombre: "Camioneta 3", patente: "", color: "#18181b", inicio: "08:00", fin: "17:00", activa: true }, // Negro
 ];
 
 function usuario(id: string, nombre: string, rol: Usuario["rol"], secreto: string, extra: Partial<Usuario> = {}): Usuario {

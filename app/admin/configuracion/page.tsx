@@ -44,7 +44,7 @@ export default function Configuracion() {
             <thead className="bg-fondo"><tr><th className={th}>Criterio</th><th className={th}>Cómo influye</th><th className={th}>Valor actual</th></tr></thead>
             <tbody className="divide-y divide-linea">
               {[
-                ["Gravedad de cada falla", "Cada falla suma su gravedad (Leve 1 … Crítica 5), según el producto y lo que le pasa.", "Catálogo de abajo"],
+                ["Gravedad de cada falla", "Cada falla suma su gravedad (Leve, Media o Crítica), según el producto y lo que le pasa.", "Catálogo de abajo"],
                 ["Tiempo sin funcionar", "Cada día que una falla lleva abierta aumenta su peso (tope: 4 días).", `+${Math.round(p.factorHoras * 100)}% por día (máx. +${Math.round(p.factorHoras * 400)}%)`],
                 ["Tamaño del cliente", "Más prioridad cuanto mayor es el abono mensual del country (el de mayor abono recibe el máximo).", `hasta +${Math.round(p.factorFacturacion * 100)}%`],
                 ["Equipos rotos en el barrio", "Más prioridad cuanto mayor es la proporción de equipos con falla sobre el total del country.", `hasta +${Math.round(p.factorRotos * 100)}% (todo roto)`],
@@ -88,7 +88,7 @@ export default function Configuracion() {
                       <td className="px-3 py-2">{t.nombre}</td>
                       <td className="px-3 py-2">
                         <select className="h-8 rounded-lg border border-linea bg-white px-2 text-sm" value={t.gravedad} onChange={(ev) => setTipos(tipos.map((x) => (x.id === t.id ? { ...x, gravedad: Number(ev.target.value) } : x)))}>
-                          {[1, 2, 3, 4, 5].map((g) => <option key={g} value={g}>{NOMBRE_GRAVEDAD[g]}</option>)}
+                          {[1, 3, 5].map((g) => <option key={g} value={g}>{NOMBRE_GRAVEDAD[g]}</option>)}
                         </select>
                       </td>
                     </tr>

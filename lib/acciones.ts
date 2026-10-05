@@ -395,6 +395,12 @@ export async function estadoAdmin(fechaPlan?: string) {
   const servicio = vigentes.reduce((t, pl) => t + pl.paradas.reduce((a, x) => a + x.servicioMin, 0), 0);
   const total = vigentes.reduce((t, pl) => t + pl.minutosTotales, 0);
   const prom = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+  const conFallasSet = new Set(abiertas.map((f) => f.countryId));
+  const paradasVigentes = new Set(vigentes.flatMap((pl) => pl.paradas.map((p) => p.countryId)));
+  const countriesPlanificadosHoy = paradasVigentes.size > 0 ? paradasVigentes : asignados;
+  const visitadosHoy = new Set(jornadas.flatMap((j) => j.visitados));
+  const pendientesProximos = [...conFallasSet].filter((c) => !countriesPlanificadosHoy.has(c));
+
   return {
     fecha, fechaPlan: fechaP, almacenamiento: store().tipo, parametros: p,
     usuarios: db.usuarios.map(publico), todasLasCamionetas: db.camionetas, camionetas,
@@ -414,6 +420,10 @@ export async function estadoAdmin(fechaPlan?: string) {
       kmPlanificados: Math.round(vigentes.reduce((t, pl) => t + pl.kmTotales, 0)),
       pctServicio: total ? Math.round((servicio / total) * 100) : 0,
       countriesSinAsignar: db.countries.filter((c) => c.activo && (val.get(c.id)?.fallas.length ?? 0) > 0 && !asignados.has(c.id)).map((c) => c.id),
+      barriosPlanificadosHoy: countriesPlanificadosHoy.size,
+      barriosVisitadosHoy: visitadosHoy.size,
+      barriosPendientesProximos: pendientesProximos.length,
+      totalBarriosConFallas: conFallasSet.size,
     },
   };
 }
