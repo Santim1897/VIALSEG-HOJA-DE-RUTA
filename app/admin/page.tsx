@@ -5,7 +5,6 @@ import { useAdmin, useAsignadoHoy } from "@/components/admin/datos";
 import { Encabezado } from "@/components/admin/Shell";
 import MapaDinamico from "@/components/MapaDinamico";
 import { Boton, Confirmar, Etiqueta, Tarjeta } from "@/components/ui";
-import { COLOR_GRAVEDAD, NOMBRE_GRAVEDAD } from "@/lib/catalogo";
 import { hora } from "@/lib/tiempo";
 
 export default function EnVivo() {
