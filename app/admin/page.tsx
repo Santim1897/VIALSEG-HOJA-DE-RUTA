@@ -61,14 +61,14 @@ export default function EnVivo() {
         acciones={<Boton variante="secundario" onClick={actualizarTodo} disabled={!!calculando}>{calculando === "todas" ? "Actualizando…" : "Actualizar recorridos"}</Boton>}
       />
 
-      <section className="mb-5 grid grid-cols-3 gap-2 sm:gap-3 xl:grid-cols-6">
+      <section className="mb-5 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-6">
         {[
-          ["Fallas abiertas", k.fallasAbiertas, `${k.criticas} altas o críticas`, k.criticas > 0],
+          ["Fallas abiertas", k.fallasAbiertas, `${k.criticas} críticas`, k.criticas > 0],
+          ["Barrios hoy", k.barriosPlanificadosHoy ?? 0, `${k.barriosVisitadosHoy ?? 0} ya atendidos`, false],
+          ["Pendientes próximos días", k.barriosPendientesProximos ?? 0, `de ${k.totalBarriosConFallas ?? 0} con fallas`, (k.barriosPendientesProximos ?? 0) > 0],
           ["Tiempo caído promedio", `${k.horasPromedioCaido} h`, "fallas abiertas", false],
-          ["Resueltas hoy", k.resueltasHoy, k.tiempoRespuestaHoras ? `Respuesta prom. ${k.tiempoRespuestaHoras} h` : "Sin cierres todavía", false],
           ["Km planificados", k.kmPlanificados, "Rutas vigentes", false],
-          ["Tiempo en servicio", `${k.pctServicio}%`, "Del total de la ruta", false],
-          ["Sin asignar", k.countriesSinAsignar.length, "Countries con fallas", k.countriesSinAsignar.length > 0],
+          ["Resueltas hoy", k.resueltasHoy, k.tiempoRespuestaHoras ? `Respuesta prom. ${k.tiempoRespuestaHoras} h` : "Sin cierres todavía", false],
         ].map(([t, v, s, alerta]) => (
           <div key={t as string} className="min-w-0 rounded-xl border border-linea bg-white px-3 py-2.5 sm:px-4 sm:py-3.5">
             <p className="text-[10px] font-semibold uppercase leading-tight tracking-wide text-gris sm:text-[11px] sm:tracking-wider">{t}</p>
@@ -91,17 +91,21 @@ export default function EnVivo() {
           titulo="Mapa de la red"
           accion={
             <div className="flex flex-wrap items-center gap-3 text-xs text-gris">
-              {[1, 3, 4, 5].map((g) => (
-                <span key={g} className="hidden items-center gap-1 sm:inline-flex">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: COLOR_GRAVEDAD[g] }} />
-                  {NOMBRE_GRAVEDAD[g]}
+              {[
+                { label: "Leve", color: "#eab308" },
+                { label: "Media", color: "#f97316" },
+                { label: "Crítica", color: "#dc2626" },
+              ].map((item) => (
+                <span key={item.label} className="hidden items-center gap-1 sm:inline-flex">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: item.color }} />
+                  {item.label}
                 </span>
               ))}
               <span className="hidden h-4 w-px bg-linea sm:block" />
               {e.camionetas.map((c) => (
                 <label key={c.id} className="inline-flex cursor-pointer items-center gap-1.5 font-medium text-tinta">
                   <input type="checkbox" className="accent-noche" checked={visibles[c.id] !== false} onChange={(ev) => setVisibles({ ...visibles, [c.id]: ev.target.checked })} />
-                  <span className="h-1.5 w-4 rounded-full" style={{ background: c.color }} />
+                  <span className="h-2 w-4 rounded-full" style={{ background: c.color }} />
                   {c.nombre}
                 </label>
               ))}
