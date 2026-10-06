@@ -89,7 +89,7 @@ export function FormEquipo({ equipo, countryId, cerrar }: { equipo?: Equipo; cou
   );
 }
 
-const COLORES = ["#1d4ed8", "#16a34a", "#18181b", "#0284c7", "#059669", "#334155", "#4f46e5", "#0d9488"];
+const COLORES = ["#0ea5e9", "#8b5cf6", "#18181b", "#0284c7", "#7c3aed", "#27272a", "#38bdf8", "#a855f7"];
 
 export function FormCamioneta({ camioneta, cerrar }: { camioneta?: Camioneta; cerrar: () => void }) {
   const { error, ocupado, guardar } = useGuardar(cerrar);
