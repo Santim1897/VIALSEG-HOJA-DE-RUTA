@@ -23,7 +23,7 @@ export interface DatosMapa {
 
 const icono = (html: string, tam: number) => L.divIcon({ className: "pin", html, iconSize: [tam, tam], iconAnchor: [tam / 2, tam / 2] });
 const iconoParada = (n: number, color: string) =>
-  icono(`<div style="width:22px;height:22px;border-radius:50%;background:${color};color:#0b1424;font:700 11px/22px system-ui;text-align:center;border:2px solid #fff;box-shadow:0 2px 6px #0004">${n}</div>`, 22);
+  icono(`<div style="width:22px;height:22px;border-radius:50%;background:${color};color:#ffffff;font:700 11px/22px system-ui;text-align:center;border:2px solid #fff;box-shadow:0 2px 6px #0004">${n}</div>`, 22);
 const iconoCamioneta = (color: string) =>
   icono(`<div style="width:34px;height:34px;border-radius:12px;background:#0b1424;border:3px solid ${color};display:grid;place-items:center;box-shadow:0 4px 12px #0006"><svg width="18" height="18" viewBox="0 0 24 24" fill="${color}"><path d="M3 6h11v9h1.5V9h3.2L22 12.5V17h-2a2.5 2.5 0 0 1-5 0H9a2.5 2.5 0 0 1-5 0H3z"/></svg></div>`, 34);
 const iconoBase = icono(`<div style="width:16px;height:16px;transform:rotate(45deg);background:#0b1424;border:2px solid #fff;box-shadow:0 2px 6px #0005"></div>`, 16);
@@ -56,7 +56,7 @@ export default function Mapa({ datos, alto = 520 }: { datos: DatosMapa; alto?: n
             key={c.id}
             center={[c.lat, c.lon]}
             radius={fs.length ? 8 + fs.length * 2.5 : 6}
-            pathOptions={{ color: cam?.color ?? "#ffffff", weight: cam ? 3 : 2, fillColor: COLOR_GRAVEDAD[g], fillOpacity: fs.length ? 0.9 : 0.55 }}
+            pathOptions={{ color: cam?.color ?? "#ffffff", weight: cam ? 4 : 2, opacity: cam ? 1 : 0.7, fillColor: COLOR_GRAVEDAD[g], fillOpacity: fs.length ? 0.9 : 0.55 }}
           >
             <Tooltip direction="top" offset={[0, -6]}>{c.nombre}</Tooltip>
             <Popup minWidth={260}>

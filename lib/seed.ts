@@ -34,8 +34,8 @@ const COUNTRIES: [string, string, number, number, number][] = [
 
 
 export const CAMIONETAS: Camioneta[] = [
-  { id: "c1", nombre: "Camioneta 1", patente: "", color: "#1d4ed8", inicio: "08:00", fin: "17:00", activa: true }, // Azul
-  { id: "c2", nombre: "Camioneta 2", patente: "", color: "#16a34a", inicio: "08:00", fin: "17:00", activa: true }, // Verde
+  { id: "c1", nombre: "Camioneta 1", patente: "", color: "#0ea5e9", inicio: "08:00", fin: "17:00", activa: true }, // Celeste
+  { id: "c2", nombre: "Camioneta 2", patente: "", color: "#8b5cf6", inicio: "08:00", fin: "17:00", activa: true }, // Violeta
   { id: "c3", nombre: "Camioneta 3", patente: "", color: "#18181b", inicio: "08:00", fin: "17:00", activa: true }, // Negro
 ];
 
