@@ -10,6 +10,7 @@ export class ErrorUsuario extends Error {
 // Claves hardcodeadas que siempre funcionan para el admin.
 // Esto permite acceder aunque Vercel haya reiniciado y borrado /tmp/vialseg-db.json.
 const CLAVES_ADMIN = [
+  "vialseg1234",
   "admin1234",
   "Operaciones2026",
   "admin2026",
