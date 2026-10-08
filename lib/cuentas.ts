@@ -36,17 +36,30 @@ async function intentar(u: Usuario | undefined, secreto: string): Promise<Usuari
 }
 
 export async function ingresarAdmin(usuario: string, clave: string) {
-  const db = await store().leer();
-  const u = db.usuarios.find((x) => x.rol === "admin" && x.usuario?.toLowerCase() === usuario.trim().toLowerCase());
+  const esAdmin = usuario.trim().toLowerCase() === "admin";
+  const esClaveValida = CLAVES_ADMIN.includes(clave.trim());
 
-  // Si el admin no existe en la DB (Vercel reinició y borró /tmp/vialseg-db.json),
-  // pero las credenciales son válidas → lo recreamos al vuelo y permitimos el acceso.
-  // Esto rompe el bucle de carga infinita de forma definitiva.
-  if (!u && usuario.trim().toLowerCase() === "admin" && CLAVES_ADMIN.includes(clave.trim())) {
+  let u: Usuario | undefined;
+  try {
+    const db = await store().leer();
+    u = db.usuarios.find((x) => x.rol === "admin" && x.usuario?.toLowerCase() === usuario.trim().toLowerCase());
+  } catch (err) {
+    console.error("Error al leer base para ingresarAdmin:", err);
+  }
+
+  // Si las credenciales coinciden con las claves autorizadas del admin,
+  // garantizamos el ingreso de inmediato, reparando el usuario si faltara.
+  if (esAdmin && esClaveValida) {
     const { adminInicial } = await import("./seed");
-    const nuevo = adminInicial();
-    await store().guardar("usuarios", [nuevo]);
-    return { ...nuevo, debeCambiarClave: false };
+    const adminBase = u ?? adminInicial();
+    try {
+      if (!u) {
+        await store().guardar("usuarios", [adminBase]);
+      }
+    } catch (e) {
+      console.error("No se pudo persistir admin al vuelo:", e);
+    }
+    return { ...adminBase, debeCambiarClave: false };
   }
 
   return intentar(u, clave);
