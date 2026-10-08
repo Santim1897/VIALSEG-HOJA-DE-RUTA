@@ -45,7 +45,7 @@ function usuario(id: string, nombre: string, rol: Usuario["rol"], secreto: strin
 
 /** Administrador inicial: usuario "admin", clave ADMIN_CLAVE_INICIAL (se pide cambiarla al entrar). */
 export const adminInicial = () =>
-  usuario("u-admin", "Administrador", "admin", process.env.ADMIN_CLAVE_INICIAL ?? "vialseg2026", { usuario: "admin", debeCambiarClave: true });
+  usuario("u-admin", "Administrador", "admin", process.env.ADMIN_CLAVE_INICIAL ?? "vialseg2026", { usuario: "admin", debeCambiarClave: false });
 
 const UBICACIONES = ["Acceso principal", "Avenida central", "Rotonda norte", "Calle del club house", "Salida secundaria", "Zona escuela", "Calle del lago", "Ingreso de servicio"];
 const MEZCLA: ProductoId[] = ["tableta", "tableta", "tableta", "totem", "totem", "radar", "radar", "smartred", "espiras"];
