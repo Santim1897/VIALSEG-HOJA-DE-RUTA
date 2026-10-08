@@ -84,7 +84,15 @@ class StoreArchivo implements Store {
   }
   private async cargar(): Promise<DB> {
     try {
-      const db: DB = { ...vacia(), ...JSON.parse(await fs.readFile(this.archivo, "utf8")) };
+      const raw = await fs.readFile(this.archivo, "utf8");
+      if (!raw || raw.trim().length === 0) {
+        throw new Error("Archivo vacío");
+      }
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.usuarios)) {
+        throw new Error("JSON con estructura inválida");
+      }
+      const db: DB = { ...vacia(), ...parsed };
       if (!db.usuarios.some((u) => u.rol === "admin")) {
         db.usuarios.push(adminInicial());
         await this.escribir(db);
