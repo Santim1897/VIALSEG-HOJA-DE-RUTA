@@ -3,7 +3,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { fechaLarga } from "@/lib/tiempo";
-import { Boton, campo, Campo, InputClave, Modal } from "../ui";
 import { postJson, useAdmin } from "./datos";
 
 const ICONOS: Record<string, string> = {
@@ -35,7 +34,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const ruta = usePathname();
   const [menu, setMenu] = useState(false);
   const [lateral, setLateral] = useState(false);
-  const [cambiarClave, setCambiarClave] = useState(false);
   const activo = (href: string) => (href === "/admin" ? ruta === "/admin" : ruta.startsWith(href));
 
   const salir = async () => {
@@ -83,8 +81,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             </span>
           </button>
           {menu && (
-            <div className="absolute right-0 mt-1 w-52 overflow-hidden rounded-xl border border-linea bg-white py-1 text-sm shadow-lg" onMouseLeave={() => setMenu(false)}>
-              <button className="block w-full px-4 py-2 text-left hover:bg-slate-50" onClick={() => { setCambiarClave(true); setMenu(false); }}>Cambiar contraseña</button>
+            <div className="absolute right-0 mt-1 w-44 overflow-hidden rounded-xl border border-linea bg-white py-1 text-sm shadow-lg" onMouseLeave={() => setMenu(false)}>
               <button className="block w-full px-4 py-2 text-left text-red-700 hover:bg-red-50" onClick={salir}>Cerrar sesión</button>
             </div>
           )}
@@ -99,42 +96,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       {aviso && (
         <div className="fixed bottom-5 left-1/2 z-[2500] -translate-x-1/2 rounded-xl bg-noche px-4 py-3 text-sm text-white shadow-xl lg:left-[calc(50%+7.5rem)]">{aviso}</div>
       )}
-
-      {estado && cambiarClave && (
-        <CambiarClave obligatorio={false} cerrar={() => setCambiarClave(false)} />
-      )}
     </div>
-  );
-}
-
-function CambiarClave({ obligatorio, cerrar }: { obligatorio: boolean; cerrar: () => void }) {
-  const { cargar, avisar } = useAdmin();
-  const [actual, setActual] = useState("");
-  const [nueva, setNueva] = useState("");
-  const [repetir, setRepetir] = useState("");
-  const [error, setError] = useState("");
-  const guardar = async () => {
-    if (nueva !== repetir) return setError("Las contraseñas no coinciden");
-    try {
-      await postJson("/api/auth", { accion: "cambiar_clave", actual, nueva });
-      await cargar();
-      avisar("Contraseña actualizada");
-      cerrar();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error");
-    }
-  };
-  return (
-    <Modal abierto titulo={obligatorio ? "Elegí una contraseña nueva" : "Cambiar contraseña"} cerrar={obligatorio ? () => undefined : cerrar}
-      pie={<Boton onClick={guardar} disabled={!actual || !nueva}>Guardar</Boton>}>
-      {obligatorio && <p className="mb-4 text-sm text-gris">Por seguridad, cambiá la contraseña inicial antes de continuar.</p>}
-      <div className="space-y-3">
-        <Campo etiqueta="Contraseña actual"><InputClave className={campo} value={actual} onChange={(e) => setActual(e.target.value)} autoComplete="current-password" /></Campo>
-        <Campo etiqueta="Contraseña nueva" ayuda="Mínimo 8 caracteres."><InputClave className={campo} value={nueva} onChange={(e) => setNueva(e.target.value)} autoComplete="new-password" /></Campo>
-        <Campo etiqueta="Repetir contraseña nueva"><InputClave className={campo} value={repetir} onChange={(e) => setRepetir(e.target.value)} autoComplete="new-password" /></Campo>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-      </div>
-    </Modal>
   );
 }
 
