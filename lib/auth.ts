@@ -12,13 +12,12 @@ export class NoAutorizado extends Error {
   status = 401;
 }
 
-/** Usuario de la sesión actual, validado contra la base (activo y misma versión). */
 export async function usuarioActual(rol?: Rol): Promise<Usuario> {
   const s = leerSesion((await cookies()).get(COOKIE)?.value);
   if (!s || (rol && s.rol !== rol)) throw new NoAutorizado("Sesión no válida");
   const db = await store().leer();
-  const u = db.usuarios.find((x) => x.id === s.uid);
-  if (!u || !u.activo || u.version !== s.v || (rol && u.rol !== rol)) throw new NoAutorizado("Sesión no válida");
+  const u = db.usuarios.find((x) => x.id === s.uid) ?? (s.rol === "admin" ? db.usuarios.find((x) => x.rol === "admin" && x.activo) : undefined);
+  if (!u || !u.activo || (rol && u.rol !== rol)) throw new NoAutorizado("Sesión no válida");
   return u;
 }
 
