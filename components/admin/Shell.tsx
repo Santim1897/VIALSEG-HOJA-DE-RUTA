@@ -100,8 +100,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         <div className="fixed bottom-5 left-1/2 z-[2500] -translate-x-1/2 rounded-xl bg-noche px-4 py-3 text-sm text-white shadow-xl lg:left-[calc(50%+7.5rem)]">{aviso}</div>
       )}
 
-      {estado && (cambiarClave || estado.yo.debeCambiarClave) && (
-        <CambiarClave obligatorio={!!estado.yo.debeCambiarClave} cerrar={() => setCambiarClave(false)} />
+      {estado && cambiarClave && (
+        <CambiarClave obligatorio={false} cerrar={() => setCambiarClave(false)} />
       )}
     </div>
   );

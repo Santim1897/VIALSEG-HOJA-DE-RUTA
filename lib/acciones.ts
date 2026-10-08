@@ -332,7 +332,7 @@ export async function accionAdmin(origin: string, actor: Usuario, cuerpo: Record
       if (!existente) {
         const secreto = String(d.secreto ?? "");
         if (rol === "admin" ? !CLAVE_VALIDA(secreto) : !PIN_VALIDO.test(secreto)) falla(rol === "admin" ? "La contraseña debe tener al menos 8 caracteres" : "El PIN debe tener 4 números");
-        credenciales = { ...hashear(secreto), version: 1, debeCambiarClave: rol === "admin" };
+        credenciales = { ...hashear(secreto), version: 1, debeCambiarClave: false };
       }
       const u: Usuario = {
         ...(existente ?? { id: nuevoId("u"), rol, activo: true, creadoAt: new Date().toISOString(), hash: "", sal: "", version: 1 }),
@@ -346,7 +346,7 @@ export async function accionAdmin(origin: string, actor: Usuario, cuerpo: Record
       const u = db.usuarios.find((x) => x.id === cuerpo.id) ?? falla("Usuario inexistente");
       const secreto = String(cuerpo.secreto ?? "");
       if (u.rol === "admin" ? !CLAVE_VALIDA(secreto) : !PIN_VALIDO.test(secreto)) falla(u.rol === "admin" ? "La contraseña debe tener al menos 8 caracteres" : "El PIN debe tener 4 números");
-      await s.guardar("usuarios", [{ ...u, ...hashear(secreto), version: u.version + 1, intentosFallidos: 0, bloqueadoHasta: undefined, debeCambiarClave: u.rol === "admin" }]);
+      await s.guardar("usuarios", [{ ...u, ...hashear(secreto), version: u.version + 1, intentosFallidos: 0, bloqueadoHasta: undefined, debeCambiarClave: false }]);
       await registrar("edicion", { detalle: `Acceso reseteado: ${u.nombre}` });
       return { ok: true };
     }

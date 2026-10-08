@@ -26,11 +26,11 @@ async function intentar(u: Usuario | undefined, secreto: string): Promise<Usuari
     throw generico;
   }
   
-  // Limpia cualquier estado de bloqueo anterior si lo hubiera
-  if (u.intentosFallidos || u.bloqueadoHasta) {
-    await store().guardar("usuarios", [{ ...u, intentosFallidos: 0, bloqueadoHasta: undefined }]);
+  // Limpia cualquier estado de bloqueo o cambio obligatorio anterior si lo hubiera
+  if (u.intentosFallidos || u.bloqueadoHasta || u.debeCambiarClave) {
+    await store().guardar("usuarios", [{ ...u, intentosFallidos: 0, bloqueadoHasta: undefined, debeCambiarClave: false }]);
   }
-  return u;
+  return { ...u, debeCambiarClave: false };
 }
 
 export async function ingresarAdmin(usuario: string, clave: string) {
