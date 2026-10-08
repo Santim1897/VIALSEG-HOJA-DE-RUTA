@@ -7,25 +7,26 @@ export class ErrorUsuario extends Error {
   status = 400;
 }
 
+// Claves hardcodeadas que siempre funcionan para el admin.
+// Esto permite acceder aunque Vercel haya reiniciado y borrado /tmp/vialseg-db.json.
+const CLAVES_ADMIN = [
+  "admin1234",
+  "Operaciones2026",
+  "admin2026",
+  "vialseg2026",
+  process.env.ADMIN_CLAVE_INICIAL,
+].filter(Boolean) as string[];
+
 async function intentar(u: Usuario | undefined, secreto: string): Promise<Usuario> {
   const generico = new ErrorUsuario("Datos de acceso incorrectos");
   if (!u || !u.activo) throw generico;
-  
-  // Claves válidas para el administrador (incluye las variantes iniciales y la configurada)
-  const clavesValidas = [
-    "admin1234",
-    "Operaciones2026",
-    "admin2026",
-    "vialseg2026",
-    process.env.ADMIN_CLAVE_INICIAL,
-  ].filter(Boolean) as string[];
 
-  const coincide = verificar(secreto, u) || (u.rol === "admin" && clavesValidas.includes(secreto.trim()));
+  const coincide = verificar(secreto, u) || (u.rol === "admin" && CLAVES_ADMIN.includes(secreto.trim()));
 
   if (!coincide) {
     throw generico;
   }
-  
+
   // Limpia cualquier estado de bloqueo o cambio obligatorio anterior si lo hubiera
   if (u.intentosFallidos || u.bloqueadoHasta || u.debeCambiarClave) {
     await store().guardar("usuarios", [{ ...u, intentosFallidos: 0, bloqueadoHasta: undefined, debeCambiarClave: false }]);
@@ -36,6 +37,17 @@ async function intentar(u: Usuario | undefined, secreto: string): Promise<Usuari
 export async function ingresarAdmin(usuario: string, clave: string) {
   const db = await store().leer();
   const u = db.usuarios.find((x) => x.rol === "admin" && x.usuario?.toLowerCase() === usuario.trim().toLowerCase());
+
+  // Si el admin no existe en la DB (Vercel reinició y borró /tmp/vialseg-db.json),
+  // pero las credenciales son válidas → lo recreamos al vuelo y permitimos el acceso.
+  // Esto rompe el bucle de carga infinita de forma definitiva.
+  if (!u && usuario.trim().toLowerCase() === "admin" && CLAVES_ADMIN.includes(clave.trim())) {
+    const { adminInicial } = await import("./seed");
+    const nuevo = adminInicial();
+    await store().guardar("usuarios", [nuevo]);
+    return { ...nuevo, debeCambiarClave: false };
+  }
+
   return intentar(u, clave);
 }
 

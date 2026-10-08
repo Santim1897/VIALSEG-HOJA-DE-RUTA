@@ -6,7 +6,11 @@ import { COOKIE, leerSesion } from "@/lib/sesion";
 export function proxy(req: NextRequest) {
   const sesion = leerSesion(req.cookies.get(COOKIE)?.value);
   const { pathname } = req.nextUrl;
-  const ir = (destino: string) => NextResponse.redirect(new URL(destino, req.url));
+  const ir = (destino: string, borrarCookie = false) => {
+    const res = NextResponse.redirect(new URL(destino, req.url));
+    if (borrarCookie) res.cookies.delete(COOKIE);
+    return res;
+  };
 
   if (pathname === "/") {
     if (sesion?.rol === "admin") return ir("/admin");
@@ -17,8 +21,10 @@ export function proxy(req: NextRequest) {
   // En /login nunca forzamos redirección para evitar bucles infinitos con sesiones expiradas
   if (pathname === "/login") return NextResponse.next();
 
-  if (pathname.startsWith("/admin") && sesion?.rol !== "admin") return ir("/login");
-  if (pathname.startsWith("/conductor") && sesion?.rol !== "conductor") return ir("/login");
+  // Si intenta entrar a /admin sin sesión admin válida → borramos la cookie (puede estar expirada)
+  // y mandamos a /login limpiamente para evitar el bucle de carga infinita.
+  if (pathname.startsWith("/admin") && sesion?.rol !== "admin") return ir("/login", true);
+  if (pathname.startsWith("/conductor") && sesion?.rol !== "conductor") return ir("/login", true);
   return NextResponse.next();
 }
 
