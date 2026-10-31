@@ -34,10 +34,10 @@ Este proyecto está pensado para desplegarse como un proyecto separado de Vercel
 6. Framework Preset: Other. Build Command: npm run build. Output Directory: dist.
 7. En Environment Variables de Vercel, agregar:
    - SUPABASE_URL = URL del proyecto Supabase de inventario.
-   - SUPABASE_ANON_KEY = clave pública anon del proyecto.
+   - SUPABASE_PUBLISHABLE_KEY = clave pública publishable del proyecto. En proyectos antiguos, también puede usarse SUPABASE_ANON_KEY.
 8. Desplegar el proyecto. Si se agregan o cambian variables, volver a desplegar.
 
-La clave anon queda visible para el navegador; el acceso se limita por autenticación, la lista inventory_members y las políticas RLS creadas por sql/schema.sql. Nunca cargar una clave service_role en este sitio.
+La clave publishable (o anon en proyectos anteriores) queda visible para el navegador; el acceso se limita por autenticación, la lista inventory_members y las políticas RLS creadas por sql/schema.sql. Nunca cargar una clave service_role en este sitio.
 
 ## Modo de demostración
 
