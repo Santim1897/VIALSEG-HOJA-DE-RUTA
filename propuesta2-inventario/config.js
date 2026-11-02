@@ -1,1 +1,0 @@
-window.VIALSEG_INVENTORY_CONFIG = { supabaseUrl: "", supabaseAnonKey: "" };
