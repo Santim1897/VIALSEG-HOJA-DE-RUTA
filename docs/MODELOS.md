@@ -23,7 +23,7 @@ Dónde está cada cosa: la fórmula del premio en `lib/premio.ts`; los pesos en 
 
 ## 2. Ruteo de una camioneta (`ruteo.py`)
 
-Nodos: 0 = posición actual (GPS), 1..n = countries asignados con fallas, n+1 = fin del recorrido (nodo ficticio: el recorrido termina en la última visita, sin volver a una base). dᵢⱼ = minutos de manejo (con tráfico si hay Google), T = minutos que quedan de jornada.
+Nodos: 0 = posición actual (GPS), 1..n = countries asignados con fallas, n+1 = regreso a base (SEDE). dᵢⱼ = minutos de manejo (con tráfico en vivo), T = minutos que quedan de jornada laboral (el conductor debe regresar a la base dentro de ese horario).
 
 **Variables:** xᵢⱼ ∈ {0,1} (de i va a j), vⱼ ∈ {0,1} (se visita j), tⱼ ≥ 0 (minuto de llegada a j).
 
@@ -39,10 +39,10 @@ premio de lo atendido − castigo por atender tarde lo urgente (u = 0,5) − cos
 
 ```
 Σⱼ x₀ⱼ = 1                              sale una vez de donde está
-Σᵢ xᵢ,ₙ₊₁ = 1                            termina después de la última visita
+Σᵢ xᵢ,ₙ₊₁ = 1                            termina en la base (SEDE)
 Σᵢ xᵢⱼ = vⱼ = Σₖ xⱼₖ                     entra y sale de cada country visitado
 tⱼ ≥ tᵢ + sᵢ + dᵢⱼ − Mᵢⱼ(1 − xᵢⱼ)        tiempos encadenados (MTZ, sin subrecorridos)
-tⱼ ≤ T·vⱼ ,  tₙ₊₁ ≤ T                     no pasarse de la jornada
+tⱼ ≤ T·vⱼ ,  tₙ₊₁ ≤ T                     regreso a base dentro de la jornada
 x₀f = 1                                 destino fijado (el conductor ya va en camino / lo forzó el admin)
 ```
 

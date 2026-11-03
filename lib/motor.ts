@@ -7,7 +7,7 @@ import { fila, matriz, trazado, type Matriz } from "./rutas";
 import { SEDE } from "./sede";
 import { store } from "./store";
 import { aMinutos, hoy, minutosDelDia } from "./tiempo";
-import type { CacheMatriz, DB, Jornada, MotivoPlan, Parada, Plan, Posicion } from "./types";
+import type { CacheMatriz, DB, Jornada, MotivoPlan, Parada, Plan, Posicion, RetornoBase } from "./types";
 
 const VIGENCIA_MATRIZ_MS = 30 * 60_000;
 // La asignación aproxima el manejo con la ida desde la ubicación de la camioneta: se deja 15% de la jornada para traslados entre countries.
@@ -89,10 +89,12 @@ export async function planificar(origin: string, camionetaId: string, motivo: Mo
     ? { ...country(enSitio), at: ahora.toISOString(), fuente: "country" }
     : pos ?? jornada.posicion ?? { lat: SEDE.lat, lon: SEDE.lon, at: ahora.toISOString(), fuente: "sede" };
 
+  const baseRetorno: Posicion = { lat: SEDE.lat, lon: SEDE.lon, at: ahora.toISOString(), fuente: "sede" };
+
   // Tiempos: matriz completa, o solo la fila desde la posición actual si la matriz guardada es reciente.
-  // El recorrido sale de donde está la camioneta y termina en la última visita (no vuelve a una base).
-  const ids = ["inicio", ...candidatos];
-  const puntos = [desde, ...candidatos.map(country)];
+  // El recorrido sale de donde está la camioneta, pasa por los countries a visitar y regresa a la base (SEDE).
+  const ids = ["inicio", ...candidatos, "base"];
+  const puntos = [desde, ...candidatos.map(country), baseRetorno];
   const cache = jornada.matriz;
   let m: Matriz;
   if (motivo === "periodico" && cache && cache.ids.join() === ids.join() && Date.now() - new Date(cache.at).getTime() < VIGENCIA_MATRIZ_MS) {
@@ -108,11 +110,9 @@ export async function planificar(origin: string, camionetaId: string, motivo: Mo
   }
 
   const fijo = [jornada.forzado, enSitio, jornada.destinoFijo].find((x) => x && candidatos.includes(x)) ?? null;
-  // Nodo final ficticio: llegar a "fin de recorrido" no cuesta tiempo desde ningún punto.
-  const conFin = [...m.min.map((f) => [...f, 0]), m.min.map(() => 0).concat(0)];
   const entrada = {
     countries: candidatos.map((id) => ({ id, premio: val.get(id)!.premio, servicio: val.get(id)!.servicioMin })),
-    tiempos: conFin.map((f) => f.map((v) => Math.round(v * 10) / 10)),
+    tiempos: m.min.map((f) => f.map((v) => Math.round(v * 10) / 10)),
     disponible: disponible(cam.inicio, cam.fin),
     peso_urgencia: p.pesoUrgencia,
     costo_minuto: p.costoMinuto,
@@ -155,14 +155,29 @@ export async function planificar(origin: string, camionetaId: string, motivo: Mo
     });
     previo = k;
   }
-  const kmTotales = paradas.reduce((t, x) => t + x.kmDesdeAnterior, 0);
+  const kBase = ids.length - 1;
+  const minRegreso = Math.round(m.min[previo][kBase] * 10) / 10;
+  const kmRegreso = Math.round(m.km[previo][kBase] * 10) / 10;
+  const kmTotales = Math.round((paradas.reduce((t, x) => t + x.kmDesdeAnterior, 0) + kmRegreso) * 10) / 10;
+
+  const retornoBase: RetornoBase = {
+    eta: new Date(ahora.getTime() + r.minutos_totales * 60_000).toISOString(),
+    minutos: minRegreso,
+    km: kmRegreso,
+    llegadaMin: r.minutos_totales,
+  };
+
+  const puntosGeometria = r.orden.length > 0
+    ? [desde, ...r.orden.map(country), baseRetorno]
+    : [desde, baseRetorno];
 
   const plan: Plan = {
     id: `p${ahora.getTime()}_${camionetaId}`,
     jornadaId: jornada.id, camionetaId, fecha: jornada.fecha, creadoAt: ahora.toISOString(), motivo, desde,
-    paradas, noVisitados: r.no_visitados, minutosTotales: r.minutos_totales, kmTotales: Math.round(kmTotales * 10) / 10,
+    paradas, noVisitados: r.no_visitados, minutosTotales: r.minutos_totales, kmTotales,
+    retornoBase,
     objetivo: r.objetivo, estado: r.estado, segundos: r.segundos, motor, proveedor: m.proveedor, conTrafico: m.conTrafico,
-    geometria: await trazado([desde, ...r.orden.map(country)]), sugerencia,
+    geometria: await trazado(puntosGeometria), sugerencia,
   };
   const nuevaCache: CacheMatriz = { ids, min: m.min, km: m.km, at: motivo === "periodico" && cache ? cache.at : ahora.toISOString(), proveedor: m.proveedor };
   await s.guardar("planes", [plan]);

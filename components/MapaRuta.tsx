@@ -15,7 +15,7 @@ export default function MapaRuta({ geometria, paradas, posicion, color }: {
   color: string;
 }) {
   // Encuadre: las paradas y la camioneta; la sede solo si no hay nada más que mostrar.
-  const puntos: [number, number][] = [...paradas.map((p) => [p.lat, p.lon] as [number, number]), ...(posicion ? [[posicion.lat, posicion.lon] as [number, number]] : [])];
+  const puntos: [number, number][] = [...paradas.map((p) => [p.lat, p.lon] as [number, number]), ...(posicion ? [[posicion.lat, posicion.lon] as [number, number]] : []), [SEDE.lat, SEDE.lon]];
   return (
     <MapContainer bounds={L.latLngBounds(puntos.length ? puntos : [[SEDE.lat, SEDE.lon]]).pad(0.15)} style={{ height: "100%", width: "100%" }} zoomControl={false} attributionControl={false}>
       <TileLayer url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />

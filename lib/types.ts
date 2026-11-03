@@ -97,7 +97,7 @@ export interface Posicion extends Punto {
 }
 
 export interface CacheMatriz {
-  ids: string[]; // ["inicio", ...countryIds]
+  ids: string[]; // ["inicio", ...countryIds, "base"]
   min: number[][];
   km: number[][];
   at: string;
@@ -138,6 +138,13 @@ export interface Parada {
   kmDesdeAnterior: number;
 }
 
+export interface RetornoBase {
+  eta: string;
+  minutos: number;
+  km: number;
+  llegadaMin: number;
+}
+
 export type MotivoPlan = "inicio" | "terminado" | "periodico" | "falla_nueva" | "admin" | "salteado" | "manual";
 
 export interface Plan {
@@ -152,6 +159,7 @@ export interface Plan {
   noVisitados: string[];
   minutosTotales: number;
   kmTotales: number;
+  retornoBase?: RetornoBase;
   objetivo: number;
   estado: string;
   segundos: number;

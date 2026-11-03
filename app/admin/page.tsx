@@ -166,7 +166,12 @@ export default function EnVivo() {
                     ) : (
                       <p className="text-gris">{j.estado === "pendiente" ? "Espera que el conductor inicie la jornada" : plan ? "Sin visitas pendientes" : "Sin ruta calculada"}</p>
                     )}
-                    {plan && <p className="tabular mt-0.5 text-xs text-gris">{plan.paradas.length} paradas · {plan.kmTotales} km · {Math.round(plan.minutosTotales / 6) / 10} h · calculado {hora(plan.creadoAt)}</p>}
+                    {plan && (
+                      <p className="tabular mt-0.5 text-xs text-gris">
+                        {plan.paradas.length} paradas · {plan.kmTotales} km · {Math.round(plan.minutosTotales / 6) / 10} h · calculado {hora(plan.creadoAt)}
+                        {plan.retornoBase && <span className="text-slate-600"> · regreso {hora(plan.retornoBase.eta)}</span>}
+                      </p>
+                    )}
                     {plan && j.estado === "activa" && ahora - new Date(plan.creadoAt).getTime() > e.parametros.recalculoMin * 2 * 60_000 && (
                       <p className="mt-1.5 text-xs font-medium text-amber-700">Recorrido desactualizado: las horas pueden no ser reales. Tocá Recalcular.</p>
                     )}
