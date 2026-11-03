@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { estadoConductor } from "@/lib/acciones";
 import { COLOR_GRAVEDAD, MOTIVOS_SALTEO, NOMBRE_GRAVEDAD, nombreProducto, TRABAJOS } from "@/lib/catalogo";
 import { linkGoogleMaps, linkWaze } from "@/lib/geo";
+import { SEDE } from "@/lib/sede";
 import { duracion, hora, horasDesde } from "@/lib/tiempo";
 import type { Posicion } from "@/lib/types";
 import { MapaRutaDinamico } from "../MapaDinamico";
@@ -319,13 +320,41 @@ export default function ConductorApp() {
           ) : (
             <section className="rounded-3xl bg-noche-2 p-6 text-center ring-1 ring-white/10">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-lima">{plan ? "Recorrido completo" : "Sin recorrido"}</p>
-              <h1 className="mt-2 text-2xl font-semibold">{plan ? "No te quedan visitas" : "Se calcula cuando haya señal"}</h1>
-              {plan && <button onClick={() => setHoja("finalizar")} className="mt-3 h-14 w-full rounded-2xl bg-lima font-semibold text-noche">Finalizar jornada</button>}
+              <h1 className="mt-2 text-2xl font-semibold">{plan ? "No te quedan visitas pendientes" : "Se calcula cuando haya señal"}</h1>
+              {plan?.retornoBase && (
+                <div className="mt-4 rounded-2xl bg-white/5 p-4 text-left ring-1 ring-white/10">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-lima">Regreso a Base</p>
+                    <span className="tabular text-sm font-semibold text-lima">Llegada ~{hora(plan.retornoBase.eta)}</span>
+                  </div>
+                  <p className="mt-1 text-lg font-semibold text-white">{SEDE.nombre}</p>
+                  <p className="text-xs text-slate-400">{SEDE.direccion}</p>
+                  <p className="mt-2 text-xs text-slate-300">
+                    {plan.retornoBase.km} km · ~{Math.round(plan.retornoBase.minutos)} min de viaje dentro de tu jornada ({camioneta.inicio} a {camioneta.fin})
+                  </p>
+                  <a
+                    href={navegar(SEDE)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-4 flex h-14 w-full items-center justify-center rounded-2xl bg-lima font-semibold text-noche transition active:scale-[0.98]"
+                  >
+                    Navegar a la base
+                  </a>
+                </div>
+              )}
+              {plan && <button onClick={() => setHoja("finalizar")} className="mt-4 h-12 w-full rounded-2xl bg-white/10 text-sm font-semibold text-white">Finalizar jornada</button>}
             </section>
           )}
 
           <div className="mt-6 flex items-center justify-between gap-3 rounded-2xl bg-white/5 px-4 py-3">
-            <span className="text-xs text-slate-400">Recorrido calculado {jornada.ultimoCalculo ? hora(jornada.ultimoCalculo) : "—"}</span>
+            <div className="text-xs text-slate-400">
+              <span>Recorrido {jornada.ultimoCalculo ? hora(jornada.ultimoCalculo) : "—"}</span>
+              {plan?.retornoBase && (
+                <span className="block text-slate-300">
+                  Regreso a base: <b className="text-white">{hora(plan.retornoBase.eta)}</b> (jornada hasta {camioneta.fin})
+                </span>
+              )}
+            </div>
             <button onClick={async () => ejecutar({ accion: "recalcular", motivo: "manual", pos: await ubicacion() })} disabled={!!ocupado}
               className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">
               {ocupado === "recalcular" || ocupado === "auto" ? "Recalculando…" : "Recalcular recorrido"}
@@ -457,6 +486,20 @@ function PestanaRuta({ estado }: { estado: Estado }) {
             {"eta" in x && x.eta && x.estado === "pendiente" && <span className="tabular text-sm text-slate-400">{hora(x.eta)}</span>}
           </li>
         ))}
+        {plan?.retornoBase && (
+          <li className="flex items-center gap-3 rounded-2xl border border-dashed border-white/20 bg-white/5 px-4 py-3">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white/10 text-xs font-bold text-slate-300">
+              🏁
+            </span>
+            <span className="flex-1 text-slate-200">
+              Regreso a Base ({SEDE.nombre})
+              <span className="block text-xs text-slate-400">
+                Fin de jornada · {plan.retornoBase.km} km · ~{Math.round(plan.retornoBase.minutos)} min de viaje
+              </span>
+            </span>
+            <span className="tabular text-sm font-semibold text-lima">{hora(plan.retornoBase.eta)}</span>
+          </li>
+        )}
       </ol>
     </section>
   );

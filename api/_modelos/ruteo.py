@@ -5,10 +5,10 @@ está escrita como programación lineal entera con OR-Tools + SCIP (resolver_pli
 para mostrar el modelo y verificar resultados. Ambas maximizan el mismo objetivo.
 
 Decide qué countries visitar y en qué orden, desde la posición actual del conductor
-y termina en la última visita, dentro del tiempo que le queda de jornada.
+y regresa a la base (SEDE), dentro del tiempo que le queda de jornada.
 
-Índices: 0 = posición actual (GPS), 1..n = countries asignados, n+1 = fin del recorrido
-(nodo ficticio: llegar cuesta 0 desde cualquier country, el recorrido no vuelve a una base).
+Índices: 0 = posición actual (GPS), 1..n = countries asignados, n+1 = regreso a base (SEDE)
+(el recorrido finaliza en la base y debe llegar dentro del horario laboral de la camioneta).
 
 Variables
     x[i,j] ∈ {0,1}  1 si después de i va directo a j
@@ -21,10 +21,10 @@ Objetivo (maximizar)
 
 Restricciones
     Σ_j x[0,j] = 1                    sale una vez de la posición actual
-    Σ_i x[i,n+1] = 1                  termina una vez (después de la última visita)
+    Σ_i x[i,n+1] = 1                  termina una vez (en la base)
     Σ_i x[i,j] = v_j = Σ_k x[j,k]     entra y sale de cada country visitado
     t_j ≥ t_i + s_i + d_ij − M_ij(1 − x_ij) tiempos encadenados (elimina subrecorridos, MTZ)
-    t_j ≤ T·v_j ,  t_{n+1} ≤ T          no pasarse de la jornada
+    t_j ≤ T·v_j ,  t_{n+1} ≤ T          regreso a base dentro de la jornada
     x[0,f] = 1                        si hay un destino fijado (el conductor ya va en camino)
 """
 from __future__ import annotations
@@ -56,10 +56,11 @@ def resolver_pli(datos: dict) -> dict:
     solver.SetTimeLimit(int(datos.get("limite_ms", 5000)))
     inicio = perf_counter()
 
+    T_fin = max(T, float(d[0][fin]))
     arcos = [(i, j) for i in range(0, n + 1) for j in range(1, n + 2) if i != j]
     x = {(i, j): solver.BoolVar(f"x_{i}_{j}") for i, j in arcos}
     v = {j: solver.BoolVar(f"v_{j}") for j in range(1, n + 1)}
-    t = {j: solver.NumVar(0.0, T, f"t_{j}") for j in range(1, n + 2)}
+    t = {j: solver.NumVar(0.0, T_fin if j == fin else T, f"t_{j}") for j in range(1, n + 2)}
 
     solver.Add(sum(x[0, j] for j in range(1, n + 2)) == 1)
     solver.Add(sum(x[i, fin] for i in range(0, n + 1)) == 1)
@@ -70,8 +71,12 @@ def resolver_pli(datos: dict) -> dict:
         solver.Add(t[j] >= d[0][j] * v[j])  # cota inferior: no se llega antes que yendo directo
     for i, j in arcos:
         ti = 0.0 if i == 0 else t[i]
-        M = T + s[i] + d[i][j]  # "M grande" ajustada por arco: refuerza la relajación lineal
+        M = T_fin + s[i] + d[i][j]  # "M grande" ajustada por arco: refuerza la relajación lineal
         solver.Add(t[j] >= ti + s[i] + d[i][j] - M * (1 - x[i, j]))
+
+    # Si se visita al menos un country, el regreso a base debe ocurrir estrictamente dentro de T (jornada).
+    # Si no se visita ningún country, permite el regreso directo a base aun con sobreturno.
+    solver.Add(t[fin] <= T + (T_fin - T) * x[0, fin])
 
     if fijo:
         ids = [x["id"] for x in nodos]
@@ -146,7 +151,8 @@ def resolver_pd(datos: dict) -> dict:
         for (mask, ult), etiquetas in capas.items():
             for et in etiquetas:
                 valor, t_fin = cerrar(et)
-                if t_fin <= T + 1e-9 and valor > mejor_valor and not (k_fijo and mask == 0):
+                valido = (t_fin <= T + 1e-9) or (mask == 0 and not k_fijo)
+                if valido and valor > mejor_valor and not (k_fijo and mask == 0):
                     mejor, mejor_valor = et, valor
                 t, val = et[0], et[1]
                 candidatos = [k_fijo] if (k_fijo and mask == 0) else range(1, n + 1)
