@@ -200,28 +200,45 @@ export async function planificar(origin: string, camionetaId: string, motivo: Mo
   return plan;
 }
 
-/** Sugerencia de asignación de countries a camionetas (modelo de alocación de demanda). */
-export async function sugerirAsignacion(origin: string) {
+/** Sugerencia de asignación de countries a camionetas según el criterio elegido para la fecha. */
+export async function sugerirAsignacion(
+  origin: string,
+  fecha = hoy(),
+  criteriosElegidos: Record<string, CriterioRuteo> = {},
+) {
   const db = await store().leer();
   const p = parametros(db);
   const val = valorar(db, p);
   const conFallas = db.countries.filter((c) => c.activo !== false && (val.get(c.id)?.fallas.length ?? 0) > 0);
   const camionetas = db.camionetas.filter((c) => c.activa !== false);
-  // Origen de cada camioneta: su última ubicación conocida de hoy, o la sede si todavía no informó.
-  const origenes = camionetas.map((c) => jornadaDe(db, c.id).posicion ?? SEDE);
+  // El orden de la flota define la prioridad fija, igual que en Planificación.
+  const jornadas = new Map(camionetas.map((c) => [c.id, jornadaDe(db, c.id, fecha)]));
+  const origenes = camionetas.map((c) => jornadas.get(c.id)?.posicion ?? SEDE);
   const m = await matriz([...origenes, ...conFallas]);
   const n = camionetas.length;
   const fijos = camionetas.flatMap((cam) => {
-    const j = jornadaDe(db, cam.id);
+    const j = jornadas.get(cam.id)!;
     return j.estado === "activa" ? [...j.visitados, ...(j.enSitio ? [j.enSitio] : [])].map((country) => ({ camioneta: cam.id, country })) : [];
   });
+  const criterios = Object.fromEntries(camionetas.map((c) => [
+    c.id, criteriosElegidos[c.id] ?? jornadas.get(c.id)?.criterioRuteo ?? "combinado",
+  ]));
   const r = await optimizador<{ estado: string; asignacion: Record<string, string[]>; sin_asignar: string[]; carga_minutos: Record<string, number>; objetivo: number; segundos: number }>(
     origin, "asignacion", {
-      camionetas: camionetas.map((c) => ({ id: c.id, capacidad: Math.round((aMinutos(c.fin) - aMinutos(c.inicio)) * HOLGURA), costo_fijo: p.costoFijoCamioneta })),
-      countries: conFallas.map((c) => ({ id: c.id, premio: val.get(c.id)!.premio, servicio: val.get(c.id)!.servicioMin })),
+      camionetas: camionetas.map((c) => ({ id: c.id, capacidad: Math.round((aMinutos(c.fin) - aMinutos(c.inicio)) * HOLGURA) })),
+      countries: conFallas.map((c) => ({
+        id: c.id,
+        premio: val.get(c.id)!.premio,
+        facturacion: val.get(c.id)!.facturacion,
+        equipos_rotos: val.get(c.id)!.equiposRotos,
+        espera: val.get(c.id)!.esperaHoras,
+        gravedad: val.get(c.id)!.gravedadTotal,
+        servicio: val.get(c.id)!.servicioMin,
+      })),
       tiempos: camionetas.map((_, i) => conFallas.map((_, j) => Math.round(m.min[i][n + j]))),
-      costo_minuto: p.costoMinuto,
+      distancias: camionetas.map((_, i) => conFallas.map((_, j) => Math.round(m.km[i][n + j] * 10) / 10)),
+      criterios,
       fijos: fijos.filter((f) => conFallas.some((c) => c.id === f.country)),
     });
-  return { ...r, proveedor: m.proveedor };
+  return { ...r, proveedor: m.proveedor, orden_prioridad: camionetas.map((c) => c.id) };
 }
