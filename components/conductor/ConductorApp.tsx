@@ -240,6 +240,12 @@ export default function ConductorApp() {
   const actual = country(actualId);
   const parada = plan?.paradas.find((p) => p.countryId === actualId);
   const navegar = (p: { lat: number; lon: number }) => (parametros.navegador === "google" ? linkGoogleMaps(p) : linkWaze(p));
+  const destinoFinal = {
+    nombre: plan?.retornoBase?.nombre ?? SEDE.nombre,
+    direccion: plan?.retornoBase?.direccion ?? SEDE.direccion,
+    lat: plan?.retornoBase?.lat ?? SEDE.lat,
+    lon: plan?.retornoBase?.lon ?? SEDE.lon,
+  };
   const deshacer = jornada.deshacer && ahora - new Date(jornada.deshacer.at).getTime() < VENTANA_DESHACER_MS ? jornada.deshacer : null;
   const sugerido = plan?.sugerencia && !jornada.enSitio ? country(plan.sugerencia.countryId) : null;
 
@@ -259,10 +265,10 @@ export default function ConductorApp() {
               </li>
             ))}
           </ul>
-          <BotonGrande className="mt-8" onClick={async () => ejecutar({ accion: "iniciar", pos: await ubicacion() })} disabled={!!ocupado || !jornada.countries.length}>
-            {ocupado === "iniciar" ? "Calculando tu recorrido…" : "Iniciar jornada"}
+          <BotonGrande className="mt-8" onClick={async () => ejecutar({ accion: "iniciar", pos: await ubicacion() })} disabled={!!ocupado || !jornada.countries.length || !usuario.domicilio}>
+            {ocupado === "iniciar" ? "Calculando tu recorrido…" : !usuario.domicilio ? "Domicilio sin configurar" : "Iniciar jornada"}
           </BotonGrande>
-          <p className="mt-3 text-center text-xs text-slate-500">El recorrido se calcula desde donde estás.</p>
+          <p className="mt-3 text-center text-xs text-slate-500">{usuario.domicilio ? `El recorrido sale desde tu domicilio: ${usuario.domicilio.direccion}.` : "Administración tiene que configurar tu domicilio antes de iniciar la jornada."}</p>
         </section>
       )}
 
@@ -329,21 +335,21 @@ export default function ConductorApp() {
               {plan?.retornoBase && (
                 <div className="mt-4 rounded-2xl bg-white/5 p-4 text-left ring-1 ring-white/10">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-lima">Regreso a Base</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-lima">Destino final</p>
                     <span className="tabular text-sm font-semibold text-lima">Llegada ~{hora(plan.retornoBase.eta)}</span>
                   </div>
-                  <p className="mt-1 text-lg font-semibold text-white">{SEDE.nombre}</p>
-                  <p className="text-xs text-slate-400">{SEDE.direccion}</p>
+                  <p className="mt-1 text-lg font-semibold text-white">{destinoFinal.nombre}</p>
+                  <p className="text-xs text-slate-400">{destinoFinal.direccion}</p>
                   <p className="mt-2 text-xs text-slate-300">
                     {plan.retornoBase.km} km · ~{Math.round(plan.retornoBase.minutos)} min de viaje dentro de tu jornada ({camioneta.inicio} a {camioneta.fin})
                   </p>
                   <a
-                    href={navegar(SEDE)}
+                    href={navegar(destinoFinal)}
                     target="_blank"
                     rel="noreferrer"
                     className="mt-4 flex h-14 w-full items-center justify-center rounded-2xl bg-lima font-semibold text-noche transition active:scale-[0.98]"
                   >
-                    Navegar a la base
+                    Navegar al domicilio
                   </a>
                 </div>
               )}
@@ -356,7 +362,7 @@ export default function ConductorApp() {
               <span>Recorrido {jornada.ultimoCalculo ? hora(jornada.ultimoCalculo) : "—"}</span>
               {plan?.retornoBase && (
                 <span className="block text-slate-300">
-                  Regreso a base: <b className="text-white">{hora(plan.retornoBase.eta)}</b> (jornada hasta {camioneta.fin})
+                  Regreso al domicilio: <b className="text-white">{hora(plan.retornoBase.eta)}</b> (jornada hasta {camioneta.fin})
                 </span>
               )}
             </div>
@@ -497,7 +503,7 @@ function PestanaRuta({ estado }: { estado: Estado }) {
               🏁
             </span>
             <span className="flex-1 text-slate-200">
-              Regreso a Base ({SEDE.nombre})
+              Regreso al domicilio ({destinoFinal.nombre})
               <span className="block text-xs text-slate-400">
                 Fin de jornada · {plan.retornoBase.km} km · ~{Math.round(plan.retornoBase.minutos)} min de viaje
               </span>

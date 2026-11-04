@@ -77,6 +77,8 @@ export async function planificar(origin: string, camionetaId: string, motivo: Mo
   const cam = db.camionetas.find((c) => c.id === camionetaId);
   if (!cam) throw new Error("Camioneta inexistente");
   const jornada = jornadaDe(db, camionetaId);
+  const conductor = db.usuarios.find((u) => u.id === jornada.conductorId && u.rol === "conductor");
+  const destino = conductor?.domicilio ?? SEDE;
   const val = valorar(db, p);
   const ahora = new Date();
 
@@ -88,12 +90,14 @@ export async function planificar(origin: string, camionetaId: string, motivo: Mo
   const enSitio = jornada.enSitio && candidatos.includes(jornada.enSitio) ? jornada.enSitio : null;
   const desde: Posicion = enSitio
     ? { ...country(enSitio), at: ahora.toISOString(), fuente: "country" }
-    : pos ?? jornada.posicion ?? { lat: SEDE.lat, lon: SEDE.lon, at: ahora.toISOString(), fuente: "sede" };
+    : motivo === "inicio" && conductor?.domicilio
+      ? { ...conductor.domicilio, at: ahora.toISOString(), fuente: "domicilio" }
+      : pos ?? jornada.posicion ?? { lat: destino.lat, lon: destino.lon, at: ahora.toISOString(), fuente: conductor?.domicilio ? "domicilio" : "sede" };
 
-  const baseRetorno: Posicion = { lat: SEDE.lat, lon: SEDE.lon, at: ahora.toISOString(), fuente: "sede" };
+  const baseRetorno: Posicion = { lat: destino.lat, lon: destino.lon, at: ahora.toISOString(), fuente: conductor?.domicilio ? "domicilio" : "sede" };
 
   // Tiempos: matriz completa, o solo la fila desde la posición actual si la matriz guardada es reciente.
-  // El recorrido sale de donde está la camioneta, pasa por los countries a visitar y regresa a la base (SEDE).
+  // El recorrido comienza en el domicilio al iniciar, usa la ubicación actual al recalcular y termina en el domicilio asignado.
   const ids = ["inicio", ...candidatos, "base"];
   const puntos = [desde, ...candidatos.map(country), baseRetorno];
   const cache = jornada.matriz;
@@ -180,6 +184,10 @@ export async function planificar(origin: string, camionetaId: string, motivo: Mo
     minutos: minRegreso,
     km: kmRegreso,
     llegadaMin: r.minutos_totales,
+    nombre: conductor?.domicilio ? `Casa de ${conductor.nombre}` : SEDE.nombre,
+    direccion: conductor?.domicilio?.direccion ?? SEDE.direccion,
+    lat: destino.lat,
+    lon: destino.lon,
   };
 
   const puntosGeometria = r.orden.length > 0
@@ -218,10 +226,10 @@ export async function sugerirAsignacion(
   const n = camionetas.length;
   const fijos = camionetas.flatMap((cam) => {
     const j = jornadas.get(cam.id)!;
-    return j.estado === "activa" ? [...j.visitados, ...(j.enSitio ? [j.enSitio] : [])].map((country) => ({ camioneta: cam.id, country })) : [];
+    return j.estado === "activa" ? j.countries.map((country) => ({ camioneta: cam.id, country })) : [];
   });
   const criterios = Object.fromEntries(camionetas.map((c) => [
-    c.id, criteriosElegidos[c.id] ?? jornadas.get(c.id)?.criterioRuteo ?? "combinado",
+    c.id, jornadas.get(c.id)?.estado === "activa" ? jornadas.get(c.id)!.criterioRuteo ?? "combinado" : criteriosElegidos[c.id] ?? jornadas.get(c.id)?.criterioRuteo ?? "combinado",
   ]));
   const r = await optimizador<{ estado: string; asignacion: Record<string, string[]>; sin_asignar: string[]; carga_minutos: Record<string, number>; objetivo: number; segundos: number }>(
     origin, "asignacion", {

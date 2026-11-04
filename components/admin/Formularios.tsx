@@ -116,14 +116,24 @@ export function FormCamioneta({ camioneta, cerrar }: { camioneta?: Camioneta; ce
 export function FormUsuario({ usuario, rol, cerrar }: { usuario?: UsuarioPublico; rol: "admin" | "conductor"; cerrar: () => void }) {
   const { error, ocupado, guardar } = useGuardar(cerrar);
   const [f, setF] = useState({ nombre: usuario?.nombre ?? "", usuario: usuario?.usuario ?? "", telefono: usuario?.telefono ?? "", secreto: "" });
+  const [direccionDomicilio, setDireccionDomicilio] = useState(usuario?.domicilio?.direccion ?? "");
+  const [posDomicilio, setPosDomicilio] = useState<Punto | undefined>(usuario?.domicilio ? { lat: usuario.domicilio.lat, lon: usuario.domicilio.lon } : undefined);
   const esAdmin = rol === "admin";
   return (
     <Modal abierto titulo={usuario ? `Editar ${usuario.nombre}` : esAdmin ? "Nuevo administrador" : "Nuevo conductor"} cerrar={cerrar}
-      pie={<Pie cerrar={cerrar} ocupado={ocupado} guardar={() => guardar({ accion: "guardar_usuario", datos: { ...f, id: usuario?.id, rol } }, usuario ? "Usuario actualizado" : "Usuario creado")} />}>
+      pie={<Pie cerrar={cerrar} ocupado={ocupado} guardar={() => guardar({ accion: "guardar_usuario", datos: { ...f, domicilio: esAdmin ? undefined : direccionDomicilio.trim() || posDomicilio ? { ...(posDomicilio ?? {}), direccion: direccionDomicilio.trim() } : null, id: usuario?.id, rol } }, usuario ? "Usuario actualizado" : "Usuario creado")} />}>
       <div className="space-y-3">
         <Campo etiqueta="Nombre y apellido"><input className={campo} value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value })} /></Campo>
         {esAdmin && <Campo etiqueta="Usuario para ingresar"><input className={campo} value={f.usuario} onChange={(e) => setF({ ...f, usuario: e.target.value })} autoComplete="off" /></Campo>}
         <Campo etiqueta="Teléfono"><input className={campo} value={f.telefono} onChange={(e) => setF({ ...f, telefono: e.target.value })} /></Campo>
+        {!esAdmin && (
+          <div className="space-y-2 rounded-xl border border-linea p-3">
+            <p className="text-sm font-semibold">Domicilio del conductor</p>
+            <Campo etiqueta="Dirección"><input className={campo} value={direccionDomicilio} onChange={(e) => setDireccionDomicilio(e.target.value)} placeholder="Calle, número, localidad" /></Campo>
+            <p className="text-xs text-gris">Marcá también el punto exacto en el mapa para calcular los recorridos.</p>
+            <MapaSelectorDinamico valor={posDomicilio} elegir={setPosDomicilio} referencias={[]} />
+          </div>
+        )}
         {!usuario && (
           esAdmin
             ? <Campo etiqueta="Contraseña inicial" ayuda="Mínimo 8 caracteres. Se le pide cambiarla al entrar."><InputClave className={campo} value={f.secreto} onChange={(e) => setF({ ...f, secreto: e.target.value })} autoComplete="new-password" /></Campo>

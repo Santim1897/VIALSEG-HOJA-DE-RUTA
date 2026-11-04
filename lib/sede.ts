@@ -1,5 +1,5 @@
-// Única ubicación fija de la empresa. Se muestra siempre en los mapas y es el punto de partida
-// solo si una camioneta todavía no informó su ubicación (GPS).
+// Sede de Vialseg, mostrada como referencia en los mapas y utilizada como respaldo para datos antiguos
+// que todavía no tengan un domicilio de conductor configurado.
 export const SEDE = {
   nombre: "Sede Vialseg",
   direccion: "Martín Lezica 3093, Lomas de San Isidro",

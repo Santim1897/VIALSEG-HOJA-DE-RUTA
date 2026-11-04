@@ -22,7 +22,7 @@ Ingreso único en `/login` con dos roles. Cada rol solo accede a su sección: lo
 | Fallas | Abiertas y resueltas, filtros, alta (country, equipo, tipo, gravedad), edición, resolver, reabrir, eliminar |
 | Countries y equipos | Alta, edición y baja de countries (ubicación con clic en el mapa, contacto, indicaciones para el conductor) y de sus equipos (producto, ubicación, n.º de serie, instalación). Ficha con fallas y visitas |
 | Flota | Camionetas: patente, color y horario de jornada; sacar de servicio |
-| Usuarios | Conductores (PIN) y administradores (contraseña): alta, edición, resetear acceso, desactivar |
+| Usuarios | Conductores (PIN) y administradores (contraseña): alta, edición, resetear acceso, desactivar. Cada conductor puede tener domicilio con dirección y punto de mapa |
 | Análisis | Tasa de falla por producto |
 | Auditoría | Toda acción con usuario y hora, cada ruta calculada y cada visita (con foto) |
 | Configuración | Cuadro de cómo se decide el recorrido, criterios de ruteo, gravedad por tipo de falla, app de navegación, carga y borrado de datos |
@@ -33,7 +33,7 @@ Ingreso único en `/login` con dos roles. Cada rol solo accede a su sección: lo
 - **Recorrido:** mapa y lista del día: atendidos, próximo, pendientes con hora estimada, salteados y los que no entran.
 - **Mi día:** resumen y visitas cerradas; finalizar jornada. Una jornada finalizada se puede reabrir el mismo día; al día siguiente arranca la que planifique administración.
 
-Recálculo: al iniciar, al terminar o saltear, ante una falla nueva en un country de su ruta, por cambios de administración y cada 10 minutos con la jornada activa (tráfico). Si por tráfico conviene otro destino que ahorra más del umbral, se le **sugiere**; no se le cambia solo. Sin señal: se ve el último recorrido y las acciones quedan en una bandeja de salida.
+Recálculo: al iniciar, al terminar o saltear, ante una falla nueva en un country asignado y cada 10 minutos con la jornada activa (tráfico). Al iniciar sale del domicilio del conductor; al recalcular usa su posición conocida y siempre vuelve a su domicilio. La distribución y el objetivo quedan bloqueados una vez iniciada la jornada. Si por tráfico conviene otro destino que ahorra más del umbral, se le **sugiere**; no se le cambia solo. Sin señal: se ve el último recorrido y las acciones quedan en una bandeja de salida.
 
 ## Arquitectura
 
