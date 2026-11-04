@@ -37,12 +37,14 @@ export async function accionConductor(origin: string, actor: Usuario, cuerpo: Re
   switch (cuerpo.accion) {
     case "iniciar":
       if (j.estado !== "pendiente") falla("La jornada ya fue iniciada");
+      if (!db.usuarios.find((u) => u.id === actor.id)?.domicilio) falla("Administración debe configurar tu domicilio antes de iniciar la jornada");
       await guardar({ estado: "activa", iniciadaAt: new Date().toISOString(), posicion: pos ?? j.posicion, enSitio: null, destinoFijo: null });
       await registrar("inicio");
       return planificar(origin, cam, "inicio", pos);
 
     case "reabrir":
       if (j.estado !== "finalizada") falla("La jornada no está finalizada");
+      if (!db.usuarios.find((u) => u.id === actor.id)?.domicilio) falla("Administración debe configurar tu domicilio antes de reabrir la jornada");
       await guardar({ estado: "activa", finalizadaAt: undefined });
       await registrar("reabrir");
       return planificar(origin, cam, "manual", pos);
@@ -189,20 +191,20 @@ export async function accionAdmin(origin: string, actor: Usuario, cuerpo: Record
           usados.set(c, cam.nombre);
         }
         const actual = jornadaDe(db, cam.id, fecha);
-        if (actual.estado === "activa") {
-          if ((actual.conductorId ?? null) !== (p.conductorId ?? null)) falla(`${cam.nombre} está en ruta: no se puede cambiar el conductor`);
-          const intocables = [...actual.visitados, ...(actual.enSitio ? [actual.enSitio] : [])];
-          const faltan = intocables.filter((c) => !p.countries.includes(c));
-          if (faltan.length) falla(`${cam.nombre} ya atendió o está atendiendo ${faltan.map((c) => db.countries.find((x) => x.id === c)?.nombre).join(", ")}: no se puede quitar`);
-        }
         const criterios: CriterioRuteo[] = ["combinado", "facturacion", "equipos_rotos", "espera", "gravedad", "combustible"];
         const criterioRuteo = p.criterioRuteo ?? actual.criterioRuteo ?? "combinado";
         if (!criterios.includes(criterioRuteo)) falla("Criterio de recorrido inválido");
+        if (actual.estado === "activa") {
+          if ((actual.conductorId ?? null) !== (p.conductorId ?? null)) falla(`${cam.nombre} ya inició la jornada: no se puede cambiar el conductor`);
+          const countriesIguales = actual.countries.length === p.countries.length && actual.countries.every((id) => p.countries.includes(id));
+          if (!countriesIguales || criterioRuteo !== (actual.criterioRuteo ?? "combinado")) {
+            falla(`${cam.nombre} ya inició la jornada: no se pueden cambiar la distribución ni el objetivo hasta la próxima jornada`);
+          }
+        }
         jornadas.push({ ...actual, heredado: false, conductorId: p.conductorId, criterioRuteo, countries: p.countries, forzado: p.countries.includes(actual.forzado ?? "") ? actual.forzado : null });
       }
       await s.guardar("jornadas", jornadas);
       await registrar("plan_dia", { detalle: String(cuerpo.resumen ?? `Plan del ${fecha} actualizado`) });
-      if (fecha === hoy()) await replanificarActivas(origin, jornadas.map((j) => j.camionetaId), "admin");
       return { ok: true };
     }
     case "forzar": {
@@ -337,9 +339,19 @@ export async function accionAdmin(origin: string, actor: Usuario, cuerpo: Record
         if (rol === "admin" ? !CLAVE_VALIDA(secreto) : !PIN_VALIDO.test(secreto)) falla(rol === "admin" ? "La contraseña debe tener al menos 8 caracteres" : "El PIN debe tener 4 números");
         credenciales = { ...hashear(secreto), version: 1, debeCambiarClave: false };
       }
+      const domicilioRaw = d.domicilio && typeof d.domicilio === "object" ? d.domicilio as Record<string, unknown> : null;
+      const domicilio = rol === "conductor" && domicilioRaw
+        ? { ...coordenada(domicilioRaw.lat, domicilioRaw.lon), direccion: texto(domicilioRaw.direccion, "la dirección del domicilio", 180) }
+        : undefined;
+      if (existente && rol === "conductor" && db.jornadas.some((j) => j.conductorId === existente.id && j.fecha === hoy() && j.estado === "activa")) {
+        const anterior = existente.domicilio;
+        const igual = !anterior && !domicilio || !!anterior && !!domicilio && anterior.lat === domicilio.lat && anterior.lon === domicilio.lon && anterior.direccion === domicilio.direccion;
+        if (!igual) falla("No se puede cambiar el domicilio mientras el conductor tiene una jornada activa");
+      }
       const u: Usuario = {
         ...(existente ?? { id: nuevoId("u"), rol, activo: true, creadoAt: new Date().toISOString(), hash: "", sal: "", version: 1 }),
         ...credenciales, nombre: texto(d.nombre, "el nombre", 60), usuario: login, telefono: String(d.telefono ?? "").trim() || undefined,
+        domicilio,
       };
       await s.guardar("usuarios", [u]);
       await registrar(existente ? "edicion" : "alta", { detalle: `${rol === "admin" ? "Administrador" : "Conductor"} ${u.nombre}` });

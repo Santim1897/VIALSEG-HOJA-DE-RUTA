@@ -85,13 +85,16 @@ export default function Planificacion() {
       const s = await postJson<Sugerencia>("/api/admin", {
         accion: "sugerir_asignacion",
         fecha,
-        criterios: Object.fromEntries(e.camionetas.map((c) => [c.id, vista[c.id].criterioRuteo])),
+        criterios: Object.fromEntries(e.camionetas.map((c) => [c.id, jornada(c.id).estado === "activa" ? actual[c.id].criterioRuteo : vista[c.id].criterioRuteo])),
       });
       setSugerencia(s);
       const b: Borrador = structuredClone(vista);
       for (const c of e.camionetas) {
-        const fijos = [...bloqueados(c.id)];
-        b[c.id].countries = [...new Set([...fijos, ...(s.asignacion[c.id] ?? [])])];
+        const activa = jornada(c.id).estado === "activa";
+        const fijos = activa ? actual[c.id].countries : [...bloqueados(c.id)];
+        const asignadosActivos = new Set(e.camionetas.filter((x) => jornada(x.id).estado === "activa").flatMap((x) => actual[x.id].countries));
+        const sugeridos = (s.asignacion[c.id] ?? []).filter((id) => activa || !asignadosActivos.has(id));
+        b[c.id].countries = activa ? [...actual[c.id].countries] : [...new Set([...fijos, ...sugeridos])];
       }
       setBorrador(b);
       avisar("Distribución sugerida aplicada al borrador. Revisala y guardá.");
@@ -184,7 +187,7 @@ export default function Planificacion() {
                 {borrador ? (
                   <label className="block text-sm">
                     <span className="mb-1 block text-gris">Objetivo del recorrido para esta jornada</span>
-                    <select className={campo} value={v.criterioRuteo} onChange={(ev) => setBorrador({ ...vista, [c.id]: { ...v, criterioRuteo: ev.target.value as CriterioRuteo } })}>
+                    <select className={campo} value={v.criterioRuteo} disabled={j.estado === "activa"} onChange={(ev) => setBorrador({ ...vista, [c.id]: { ...v, criterioRuteo: ev.target.value as CriterioRuteo } })}>
                       {criterios.map((x) => <option key={x.id} value={x.id}>{x.nombre}</option>)}
                     </select>
                   </label>
@@ -220,7 +223,7 @@ export default function Planificacion() {
       {borrador && (
         <Tarjeta
           titulo="Asignar countries"
-          subtitulo="Ordenados por prioridad. Los countries ya atendidos hoy no se pueden mover."
+          subtitulo="Ordenados por prioridad. La distribución de las camionetas en ruta permanece bloqueada hasta la próxima jornada."
           accion={<label className="flex items-center gap-2 text-sm text-gris"><input type="checkbox" checked={soloConFallas} onChange={(ev) => setSoloConFallas(ev.target.checked)} /> Solo con fallas abiertas</label>}
         >
           <div className="overflow-x-auto">
@@ -230,7 +233,7 @@ export default function Planificacion() {
                 {filas.map((c) => {
                   const val = e.valoraciones[c.id];
                   const cam = camionetaDe(c.id);
-                  const fijo = cam ? bloqueados(cam).has(c.id) : false;
+                  const fijo = cam ? bloqueados(cam).has(c.id) || jornada(cam).estado === "activa" : false;
                   return (
                     <tr key={c.id} className="hover:bg-fondo/60">
                       <td className={td}><p className="font-medium">{c.nombre}</p><p className="text-xs text-gris">{c.zona}</p></td>
@@ -242,7 +245,7 @@ export default function Planificacion() {
                         <select className="h-9 rounded-lg border border-linea bg-white px-2 text-sm" value={cam} disabled={fijo} onChange={(ev) => mover(c.id, ev.target.value)}
                           style={{ borderLeft: `4px solid ${e.camionetas.find((k) => k.id === cam)?.color ?? "#e3e8ef"}` }}>
                           <option value="">Sin asignar</option>
-                          {e.camionetas.map((k) => <option key={k.id} value={k.id}>{k.nombre}</option>)}
+                          {e.camionetas.map((k) => <option key={k.id} value={k.id} disabled={jornada(k.id).estado === "activa"}>{k.nombre}{jornada(k.id).estado === "activa" ? " (jornada iniciada)" : ""}</option>)}
                         </select>
                       </td>
                     </tr>
@@ -274,7 +277,7 @@ export default function Planificacion() {
                 </ul>
               </div>
             ))}
-            {fecha === hoy() && e.jornadasPlan.some((j) => j.estado === "activa") && <p className="text-xs text-gris">Las camionetas en ruta recalculan su recorrido al guardar.</p>}
+            {fecha === hoy() && e.jornadasPlan.some((j) => j.estado === "activa") && <p className="text-xs text-gris">La distribución y el objetivo de cada jornada iniciada quedan bloqueados. Guardar cambios de otras camionetas no modifica sus recorridos.</p>}
           </div>
         }
       />

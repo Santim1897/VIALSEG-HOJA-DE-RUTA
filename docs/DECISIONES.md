@@ -21,7 +21,8 @@ Qué se decidió, por qué y qué queda pendiente. Agregar una entrada por cada 
 | 33 | ~~Sin bases por camioneta: cada una sale desde su GPS (o desde la sede si todavía no informó ubicación) y el recorrido termina en la última visita~~ (reemplazada por la #35). La sede (Martín Lezica 3093, San Isidro) sigue siendo el único punto fijo de regreso | Acercarse a la realidad: no inventar bases; las camionetas pueden empezar y terminar en cualquier lado |
 | 32 | Producción: Vercel (`vialseg-hoja-de-ruta.vercel.app`) + Supabase en São Paulo; contraseña inicial de admin y secreto de sesión como variables de entorno de Vercel | Datos persistentes y compartidos entre todos los usuarios |
 | 31 | Si un día no está planificado, cada camioneta arranca con el conductor del último día planificado y los countries que siguen con fallas abiertas; administración lo puede cambiar | Que nadie empiece el día sin recorrido. Pedido del equipo |
-| 35 | Regreso obligatorio a base (SEDE) dentro de la jornada laboral: la ruta optimiza las visitas garantizando la vuelta a la base antes del fin del turno (cam.fin); los km, tiempo y mapa incluyen el regreso | Requerimiento de operación: el conductor debe devolver la camioneta a la base dentro de su horario de trabajo |
+| 35 | ~~Regreso obligatorio a base (SEDE) dentro de la jornada laboral~~ (reemplazada por la #36) | — |
+| 36 | Cada conductor tiene domicilio configurable desde administración. La jornada inicia desde ese punto y termina allí; los recálculos en ruta salen de la posición conocida y vuelven al domicilio. Al iniciar la jornada, quedan bloqueados el objetivo y la distribución de countries hasta la próxima jornada | Evitar cambios de asignación durante la operación y representar el destino real de cada conductor |
 
 ## 2026-10-04 · Orientación a producción
 
