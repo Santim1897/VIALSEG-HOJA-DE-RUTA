@@ -185,19 +185,24 @@ export default function ConductorApp() {
     };
   }, [cargar, enviarCola]);
 
-  // Actualización por tráfico mientras la jornada está activa (y al volver a abrir la app).
+  // Refresca la planificación al volver a la app y periódicamente, incluso antes de iniciar la jornada.
+  // Si está en ruta, además conserva el recálculo por tráfico cuando vence el intervalo configurado.
   useEffect(() => {
     const revisar = async () => {
+      if (!navigator.onLine || document.hidden) return;
       const e = estadoRef.current;
-      if (!e?.jornada || e.jornada.estado !== "activa" || !navigator.onLine || document.hidden) return;
+      if (!e?.jornada || e.jornada.estado !== "activa") {
+        await cargar();
+        return;
+      }
       const ultimo = e.jornada.ultimoCalculo ? new Date(e.jornada.ultimoCalculo).getTime() : 0;
       if (Date.now() - ultimo < e.parametros.recalculoMin * 60_000) {
-        if (!document.hidden) cargar();
+        await cargar();
         return;
       }
       await ejecutar({ accion: "recalcular", motivo: "periodico", pos: await ubicacion() }, "auto");
     };
-    const t = setInterval(revisar, 60_000);
+    const t = setInterval(revisar, 30_000);
     document.addEventListener("visibilitychange", revisar);
     return () => {
       clearInterval(t);
@@ -263,7 +268,7 @@ export default function ConductorApp() {
           <BotonGrande className="mt-8" onClick={async () => ejecutar({ accion: "iniciar", pos: await ubicacion() })} disabled={!!ocupado || !jornada.countries.length || !usuario.domicilio}>
             {ocupado === "iniciar" ? "Calculando tu recorrido…" : !usuario.domicilio ? "Domicilio sin configurar" : "Iniciar jornada"}
           </BotonGrande>
-          <p className="mt-3 text-center text-xs text-slate-500">{usuario.domicilio ? `El recorrido sale desde tu domicilio: ${usuario.domicilio.direccion}.` : "No tenés un domicilio configurado; el recorrido sale desde la sede Vialseg."}</p>
+          <p className="mt-3 text-center text-xs text-slate-500">{usuario.domicilio ? `El recorrido sale desde tu domicilio: ${usuario.domicilio.direccion}.` : "Administración tiene que configurar tu domicilio antes de iniciar la jornada."}</p>
         </section>
       )}
 
