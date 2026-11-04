@@ -7,7 +7,7 @@ import { fila, matriz, trazado, type Matriz } from "./rutas";
 import { SEDE } from "./sede";
 import { store } from "./store";
 import { aMinutos, hoy, minutosDelDia } from "./tiempo";
-import type { CacheMatriz, DB, Jornada, MotivoPlan, Parada, Plan, Posicion, RetornoBase } from "./types";
+import type { CacheMatriz, CriterioRuteo, DB, Jornada, MotivoPlan, Parada, Plan, Posicion, RetornoBase } from "./types";
 
 const VIGENCIA_MATRIZ_MS = 30 * 60_000;
 // La asignación aproxima el manejo con la ida desde la ubicación de la camioneta: se deja 15% de la jornada para traslados entre countries.
@@ -34,6 +34,7 @@ export function jornadaDe(db: DB, camionetaId: string, fecha = hoy()): Jornada {
   return {
     id: idJornada(camionetaId, fecha), fecha, camionetaId, estado: "pendiente", salteados: [], visitados: [],
     conductorId: conductorActivo ? previa!.conductorId : null,
+    criterioRuteo: previa?.criterioRuteo ?? "combinado",
     countries: (previa?.countries ?? []).filter((c) => conFallas.has(c) && activos.has(c)),
     heredado: !!previa,
   };
@@ -110,12 +111,26 @@ export async function planificar(origin: string, camionetaId: string, motivo: Mo
   }
 
   const fijo = [jornada.forzado, enSitio, jornada.destinoFijo].find((x) => x && candidatos.includes(x)) ?? null;
+  const criterioRuteo: CriterioRuteo = jornada.criterioRuteo ?? "combinado";
+  const recompensa = (id: string) => {
+    const x = val.get(id)!;
+    switch (criterioRuteo) {
+      case "facturacion": return x.facturacion;
+      case "equipos_rotos": return x.equiposRotos;
+      case "espera": return x.esperaHoras;
+      case "gravedad": return x.gravedadTotal;
+      case "combustible": return 1;
+      default: return x.premio;
+    }
+  };
   const entrada = {
-    countries: candidatos.map((id) => ({ id, premio: val.get(id)!.premio, servicio: val.get(id)!.servicioMin })),
+    criterio: criterioRuteo,
+    countries: candidatos.map((id) => ({ id, premio: recompensa(id), servicio: val.get(id)!.servicioMin })),
     tiempos: m.min.map((f) => f.map((v) => Math.round(v * 10) / 10)),
+    distancias: m.km.map((f) => f.map((v) => Math.round(v * 10) / 10)),
     disponible: disponible(cam.inicio, cam.fin),
-    peso_urgencia: p.pesoUrgencia,
-    costo_minuto: p.costoMinuto,
+    peso_urgencia: criterioRuteo === "combinado" ? p.pesoUrgencia : 0,
+    costo_minuto: criterioRuteo === "combinado" ? p.costoMinuto : 0,
   };
 
   let motor = "";
@@ -175,7 +190,7 @@ export async function planificar(origin: string, camionetaId: string, motivo: Mo
     id: `p${ahora.getTime()}_${camionetaId}`,
     jornadaId: jornada.id, camionetaId, fecha: jornada.fecha, creadoAt: ahora.toISOString(), motivo, desde,
     paradas, noVisitados: r.no_visitados, minutosTotales: r.minutos_totales, kmTotales,
-    retornoBase,
+    retornoBase, criterioRuteo,
     objetivo: r.objetivo, estado: r.estado, segundos: r.segundos, motor, proveedor: m.proveedor, conTrafico: m.conTrafico,
     geometria: await trazado(puntosGeometria), sugerencia,
   };

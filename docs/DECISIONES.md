@@ -2,6 +2,12 @@
 
 Qué se decidió, por qué y qué queda pendiente. Agregar una entrada por cada decisión nueva (la más reciente arriba).
 
+## 2026-11-04 · Criterio de ruteo seleccionable por jornada
+
+| # | Decisión | Motivo |
+|---|---|---|
+| 36 | En Planificación, el administrador elige para cada camioneta y fecha uno de estos criterios: combinado actual, facturación, cantidad absoluta de equipos rotos, antigüedad de fallas, gravedad o máximo de barrios con mínimo de kilómetros. El criterio se guarda en la jornada; el modo de combustible maximiza primero los barrios atendidos y minimiza luego la distancia total, incluido el regreso a la sede | Comparar planes con objetivos distintos sin asignar pesos arbitrarios entre criterios |
+
 ## 2026-10-04 · Datos operativos reales y simplificación
 
 | # | Decisión | Motivo |
@@ -11,7 +17,7 @@ Qué se decidió, por qué y qué queda pendiente. Agregar una entrada por cada 
 | 29 | Se quita el modelo de centro de gravedad (ubicación óptima de la base) | La sede es fija: el análisis no aporta a la operación |
 | 30 | Cuadro "Cómo se decide el recorrido" en Configuración, con los valores vigentes | Que los criterios no queden solo en el código |
 | 34 | Gravedad visible en 3 niveles (Leve, Media, Crítica; el modelo sigue usando 1 a 5), tráfico en vivo con HERE (clave en variables de Vercel) y colores de camioneta celeste, violeta y negro (PRs #24 a #26 de Santi) | Más simple de leer; tráfico real |
-| 33 | Sin bases por camioneta: cada una sale desde su GPS (o desde la sede si todavía no informó ubicación) y el recorrido termina en la última visita. La sede (Martín Lezica 3093, San Isidro) es la única ubicación fija y se muestra siempre en los mapas | Acercarse a la realidad: no inventar bases; las camionetas pueden empezar y terminar en cualquier lado |
+| 33 | ~~Sin bases por camioneta: cada una sale desde su GPS (o desde la sede si todavía no informó ubicación) y el recorrido termina en la última visita~~ (reemplazada por la #35). La sede (Martín Lezica 3093, San Isidro) sigue siendo el único punto fijo de regreso | Acercarse a la realidad: no inventar bases; las camionetas pueden empezar y terminar en cualquier lado |
 | 32 | Producción: Vercel (`vialseg-hoja-de-ruta.vercel.app`) + Supabase en São Paulo; contraseña inicial de admin y secreto de sesión como variables de entorno de Vercel | Datos persistentes y compartidos entre todos los usuarios |
 | 31 | Si un día no está planificado, cada camioneta arranca con el conductor del último día planificado y los countries que siguen con fallas abiertas; administración lo puede cambiar | Que nadie empiece el día sin recorrido. Pedido del equipo |
 | 35 | Regreso obligatorio a base (SEDE) dentro de la jornada laboral: la ruta optimiza las visitas garantizando la vuelta a la base antes del fin del turno (cam.fin); los km, tiempo y mapa incluyen el regreso | Requerimiento de operación: el conductor debe devolver la camioneta a la base dentro de su horario de trabajo |

@@ -21,6 +21,20 @@ Tiempo en el country: sⱼ = ingreso por guardia (15 min, editable por country) 
 
 Dónde está cada cosa: la fórmula del premio en `lib/premio.ts`; los pesos en Configuración (se guardan en la base, colección `parametros`); la gravedad por tipo de falla en Configuración (colección `tipos_falla`, valores iniciales en `lib/catalogo.ts`); el modelo de ruteo en `api/_modelos/ruteo.py`. En el panel, **Configuración → Cómo se decide el recorrido** muestra el cuadro con los valores vigentes.
 
+## Criterio del recorrido por jornada
+
+En **Planificación**, el administrador puede elegir el objetivo de cada camioneta para la fecha seleccionada. El criterio queda guardado en esa jornada; si cambia de conductor, el objetivo sigue perteneciendo a la jornada y a la camioneta.
+
+- **Combinado (actual):** conserva el puntaje y los pesos configurables descritos arriba.
+- **Facturación por barrio:** maximiza la suma de la facturación mensual de los barrios visitados.
+- **Cantidad de equipos rotos:** maximiza la cantidad absoluta de equipos distintos con fallas abiertas atendidos; cada tipo de equipo cuenta como una unidad.
+- **Fallas más antiguas:** prioriza los barrios cuya suma de antigüedad de fallas abiertas es mayor (horas desde su apertura, sin aplicar el tope de cuatro días del puntaje combinado).
+- **Gravedad de las fallas:** maximiza la suma de gravedad (escala 1 a 5) de las fallas abiertas atendidas.
+- **Cobertura y combustible:** primero maximiza la cantidad de barrios atendidos dentro del horario y con regreso a la base; entre las soluciones con esa cantidad máxima, minimiza los kilómetros totales, incluido el regreso.
+
+Los criterios individuales no suman facturación, antigüedad, cantidad y gravedad en un puntaje conjunto. Todos respetan la duración de servicio y el regreso a la sede dentro de la jornada. En combustible, la prioridad de cobertura se implementa con una cota derivada de la máxima distancia posible, para asegurar que un kilómetro no pueda compensar la pérdida de un barrio.
+
+
 ## 2. Ruteo de una camioneta (`ruteo.py`)
 
 Nodos: 0 = posición actual (GPS), 1..n = countries asignados con fallas, n+1 = regreso a base (SEDE). dᵢⱼ = minutos de manejo (con tráfico en vivo), T = minutos que quedan de jornada laboral (el conductor debe regresar a la base dentro de ese horario).

@@ -6,7 +6,7 @@ import { valorar } from "./premio";
 import { datosEjemplo, datosVacios } from "./seed";
 import { store } from "./store";
 import { horasDesde, hoy } from "./tiempo";
-import type { Camioneta, Cierre, Country, DB, Equipo, Evento, Falla, Jornada, Parametros, Posicion, TipoEvento, Usuario } from "./types";
+import type { Camioneta, Cierre, Country, CriterioRuteo, DB, Equipo, Evento, Falla, Jornada, Parametros, Posicion, TipoEvento, Usuario } from "./types";
 
 const VENTANA_DESHACER_MS = 30 * 60_000;
 const nuevoId = (prefijo: string) => `${prefijo}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -173,7 +173,7 @@ export async function accionAdmin(origin: string, actor: Usuario, cuerpo: Record
     case "plan_dia": {
       const fecha = String(cuerpo.fecha ?? hoy());
       if (fecha < hoy()) falla("No se puede modificar un día que ya pasó");
-      const planes = cuerpo.planes as { camionetaId: string; conductorId: string | null; countries: string[] }[];
+      const planes = cuerpo.planes as { camionetaId: string; conductorId: string | null; countries: string[]; criterioRuteo?: CriterioRuteo }[];
       const usados = new Map<string, string>();
       const conductores = new Map<string, string>();
       const jornadas: Jornada[] = [];
@@ -195,7 +195,10 @@ export async function accionAdmin(origin: string, actor: Usuario, cuerpo: Record
           const faltan = intocables.filter((c) => !p.countries.includes(c));
           if (faltan.length) falla(`${cam.nombre} ya atendió o está atendiendo ${faltan.map((c) => db.countries.find((x) => x.id === c)?.nombre).join(", ")}: no se puede quitar`);
         }
-        jornadas.push({ ...actual, heredado: false, conductorId: p.conductorId, countries: p.countries, forzado: p.countries.includes(actual.forzado ?? "") ? actual.forzado : null });
+        const criterios: CriterioRuteo[] = ["combinado", "facturacion", "equipos_rotos", "espera", "gravedad", "combustible"];
+        const criterioRuteo = p.criterioRuteo ?? actual.criterioRuteo ?? "combinado";
+        if (!criterios.includes(criterioRuteo)) falla("Criterio de recorrido inválido");
+        jornadas.push({ ...actual, heredado: false, conductorId: p.conductorId, criterioRuteo, countries: p.countries, forzado: p.countries.includes(actual.forzado ?? "") ? actual.forzado : null });
       }
       await s.guardar("jornadas", jornadas);
       await registrar("plan_dia", { detalle: String(cuerpo.resumen ?? `Plan del ${fecha} actualizado`) });

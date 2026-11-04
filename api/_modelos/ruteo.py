@@ -37,11 +37,13 @@ from ortools.linear_solver import pywraplp
 def resolver_pli(datos: dict) -> dict:
     """Programación lineal entera (OR-Tools + SCIP)."""
     nodos = datos["countries"]  # [{id, premio, servicio}]
-    d = datos["tiempos"]  # matriz (n+2)x(n+2) en minutos: 0=inicio, 1..n, n+1=fin
+    d = datos["tiempos"]
+    km = datos.get("distancias", d)
     T = float(datos["disponible"])
     u = float(datos.get("peso_urgencia", 0.5))
     c = float(datos.get("costo_minuto", 0.05))
     fijo = datos.get("fijo")
+    criterio = datos.get("criterio", "combinado")
 
     n = len(nodos)
     fin = n + 1
@@ -49,8 +51,14 @@ def resolver_pli(datos: dict) -> dict:
         return {"estado": "OPTIMO", "orden": [], "llegadas": {}, "no_visitados": [], "objetivo": 0.0,
                 "minutos_totales": round(d[0][fin], 1) if d else 0.0, "segundos": 0.0}
 
-    p = [0.0] + [float(x["premio"]) for x in nodos] + [0.0]
     s = [0.0] + [float(x["servicio"]) for x in nodos] + [0.0]
+    if criterio == "combustible":
+        max_arco_km = max((float(km[i][j]) for i in range(len(km)) for j in range(len(km[i]))), default=0.0)
+        # Una visita adicional siempre gana a cualquier diferencia posible de km de una ruta.
+        premio_barrio = (n + 1) * max_arco_km + 1.0
+        p = [0.0] + [premio_barrio] * n + [0.0]
+    else:
+        p = [0.0] + [float(x["premio"]) for x in nodos] + [0.0]
 
     solver = pywraplp.Solver.CreateSolver("SCIP") or pywraplp.Solver.CreateSolver("CBC")
     solver.SetTimeLimit(int(datos.get("limite_ms", 5000)))
@@ -68,14 +76,13 @@ def resolver_pli(datos: dict) -> dict:
         solver.Add(sum(x[i, j] for i in range(0, n + 1) if i != j) == v[j])
         solver.Add(sum(x[j, k] for k in range(1, n + 2) if k != j) == v[j])
         solver.Add(t[j] <= T * v[j])
-        solver.Add(t[j] >= d[0][j] * v[j])  # cota inferior: no se llega antes que yendo directo
+        solver.Add(t[j] >= d[0][j] * v[j])
     for i, j in arcos:
         ti = 0.0 if i == 0 else t[i]
-        M = T_fin + s[i] + d[i][j]  # "M grande" ajustada por arco: refuerza la relajación lineal
+        M = T_fin + s[i] + d[i][j]
         solver.Add(t[j] >= ti + s[i] + d[i][j] - M * (1 - x[i, j]))
 
-    # Si se visita al menos un country, el regreso a base debe ocurrir estrictamente dentro de T (jornada).
-    # Si no se visita ningún country, permite el regreso directo a base aun con sobreturno.
+    # Solo permite regreso fuera de turno cuando se vuelve directamente sin visitas.
     solver.Add(t[fin] <= T + (T_fin - T) * x[0, fin])
 
     if fijo:
@@ -83,19 +90,26 @@ def resolver_pli(datos: dict) -> dict:
         if fijo in ids:
             solver.Add(x[0, ids.index(fijo) + 1] == 1)
 
-    solver.Maximize(
-        sum(p[j] * v[j] for j in v)
-        - u * sum((p[j] / T) * t[j] for j in v)
-        - c * sum(d[i][j] * x[i, j] for i, j in arcos)
-        - 1e-4 * t[fin]  # desempate: terminar lo antes posible
-    )
+    recompensa = sum(p[j] * v[j] for j in v)
+    if criterio == "combustible":
+        solver.Maximize(recompensa - sum(float(km[i][j]) * x[i, j] for i, j in arcos))
+    elif criterio == "combinado":
+        solver.Maximize(
+            recompensa
+            - u * sum((p[j] / T) * t[j] for j in v)
+            - c * sum(d[i][j] * x[i, j] for i, j in arcos)
+            - 1e-4 * t[fin]
+        )
+    else:
+        # Los criterios individuales no mezclan facturación, cantidad, antigüedad o gravedad.
+        solver.Maximize(recompensa)
+
     estado = solver.Solve()
     segundos = round(perf_counter() - inicio, 3)
     if estado not in (pywraplp.Solver.OPTIMAL, pywraplp.Solver.FEASIBLE):
         return {"estado": "SIN_SOLUCION", "orden": [], "llegadas": {}, "segundos": segundos,
                 "no_visitados": [x["id"] for x in nodos], "objetivo": 0.0, "minutos_totales": 0.0}
 
-    # Reconstruir el recorrido siguiendo los arcos elegidos.
     siguiente = {i: j for (i, j), var in x.items() if var.solution_value() > 0.5}
     orden, actual = [], 0
     while actual in siguiente and siguiente[actual] != fin and len(orden) <= n:
@@ -115,36 +129,44 @@ def resolver_pli(datos: dict) -> dict:
 
 
 def resolver_pd(datos: dict) -> dict:
-    """Programación dinámica exacta (Bellman / Held-Karp con etiquetas).
-
-    Estado: (conjunto visitado, último country). En cada estado se guardan solo las etiquetas
-    (tiempo, valor) no dominadas: una etiqueta domina a otra si llega antes y acumuló más valor,
-    porque lo que queda por ganar solo puede empeorar con el reloj. Así se recorre todo el espacio
-    de soluciones sin repetir trabajo y el resultado es el óptimo del mismo objetivo que resolver_pli.
-    """
+    """Programación dinámica exacta para el criterio seleccionado."""
     nodos = datos["countries"]
     d = datos["tiempos"]
+    km = datos.get("distancias", d)
     T = float(datos["disponible"])
     u = float(datos.get("peso_urgencia", 0.5))
     c = float(datos.get("costo_minuto", 0.05))
     fijo = datos.get("fijo")
+    criterio = datos.get("criterio", "combinado")
     inicio = perf_counter()
     n = len(nodos)
     fin = n + 1
-    p = [0.0] + [float(x["premio"]) for x in nodos]
-    s = [0.0] + [float(x["servicio"]) for x in nodos]
     ids = [x["id"] for x in nodos]
+    s = [0.0] + [float(x["servicio"]) for x in nodos] + [0.0]
+    if criterio == "combustible":
+        max_arco_km = max((float(km[i][j]) for i in range(len(km)) for j in range(len(km[i]))), default=0.0)
+        # Esta cota hace que una visita más prevalezca sobre toda reducción de distancia.
+        premio_barrio = (n + 1) * max_arco_km + 1.0
+        p = [0.0] + [premio_barrio] * n
+    else:
+        p = [0.0] + [float(x["premio"]) for x in nodos]
     k_fijo = ids.index(fijo) + 1 if fijo in ids else None
 
-    # etiqueta = (tiempo de llegada al último, valor acumulado, último, máscara, etiqueta anterior)
+    # etiqueta = (llegada al último, objetivo acumulado, último, máscara, etiqueta anterior)
     raiz = (0.0, 0.0, 0, 0, None)
     capas = {(0, 0): [raiz]}
     mejor, mejor_valor = None, -1e18
 
     def cerrar(et):
-        t, val, ult, _, _ = et
-        t_fin = t + s[ult] + d[ult][fin]
-        return val - c * d[ult][fin] - 1e-4 * t_fin, t_fin
+        tiempo, valor, ultimo, _, _ = et
+        t_fin = tiempo + s[ultimo] + d[ultimo][fin]
+        if criterio == "combustible":
+            valor_final = valor - km[ultimo][fin]
+        elif criterio == "combinado":
+            valor_final = valor - c * d[ultimo][fin] - 1e-4 * t_fin
+        else:
+            valor_final = valor
+        return valor_final, t_fin
 
     while capas:
         siguientes: dict = {}
@@ -154,20 +176,25 @@ def resolver_pd(datos: dict) -> dict:
                 valido = (t_fin <= T + 1e-9) or (mask == 0 and not k_fijo)
                 if valido and valor > mejor_valor and not (k_fijo and mask == 0):
                     mejor, mejor_valor = et, valor
-                t, val = et[0], et[1]
+                t_actual, valor_actual = et[0], et[1]
                 candidatos = [k_fijo] if (k_fijo and mask == 0) else range(1, n + 1)
                 for j in candidatos:
                     if mask & (1 << j):
                         continue
-                    tj = t + s[ult] + d[ult][j]
-                    if tj + s[j] + d[j][fin] > T + 1e-9:
+                    t_j = t_actual + s[ult] + d[ult][j]
+                    if t_j + s[j] + d[j][fin] > T + 1e-9:
                         continue
-                    vj = val + p[j] * (1 - u * tj / T) - c * d[ult][j]
+                    if criterio == "combustible":
+                        valor_j = valor_actual + p[j] - km[ult][j]
+                    elif criterio == "combinado":
+                        valor_j = valor_actual + p[j] * (1 - u * t_j / T) - c * d[ult][j]
+                    else:
+                        valor_j = valor_actual + p[j]
                     lista = siguientes.setdefault((mask | (1 << j), j), [])
-                    if any(o[0] <= tj + 1e-9 and o[1] >= vj - 1e-9 for o in lista):
+                    if any(o[0] <= t_j + 1e-9 and o[1] >= valor_j - 1e-9 for o in lista):
                         continue
-                    lista[:] = [o for o in lista if not (tj <= o[0] + 1e-9 and vj >= o[1] - 1e-9)]
-                    lista.append((tj, vj, j, mask | (1 << j), et))
+                    lista[:] = [o for o in lista if not (t_j <= o[0] + 1e-9 and valor_j >= o[1] - 1e-9)]
+                    lista.append((t_j, valor_j, j, mask | (1 << j), et))
         capas = siguientes
 
     orden, llegadas, et = [], {}, mejor
@@ -177,12 +204,13 @@ def resolver_pd(datos: dict) -> dict:
         et = et[4]
     orden.reverse()
     _, t_fin = cerrar(mejor) if mejor else (0, 0)
+    objetivo = round(mejor_valor + 1e-4 * t_fin, 3) if mejor and criterio == "combinado" else round(mejor_valor, 3) if mejor else 0.0
     return {
         "estado": "OPTIMO" if mejor else "SIN_SOLUCION",
         "orden": [ids[k - 1] for k in orden],
         "llegadas": llegadas,
         "no_visitados": [ids[k - 1] for k in range(1, n + 1) if k not in orden],
-        "objetivo": round(mejor_valor + 1e-4 * t_fin, 3) if mejor else 0.0,
+        "objetivo": objetivo,
         "minutos_totales": round(t_fin, 1),
         "segundos": round(perf_counter() - inicio, 3),
         "metodo": "Programación dinámica exacta",

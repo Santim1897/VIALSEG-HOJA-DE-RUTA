@@ -109,6 +109,7 @@ export interface Jornada {
   fecha: string;
   camionetaId: string;
   conductorId?: string | null;
+  criterioRuteo?: CriterioRuteo; // objetivo elegido para esta camioneta y fecha
   countries: string[]; // asignados por el administrador
   heredado?: boolean; // todavía no guardado: copia del último día planificado
   estado: "pendiente" | "activa" | "finalizada";
@@ -145,6 +146,8 @@ export interface RetornoBase {
   llegadaMin: number;
 }
 
+export type CriterioRuteo = "combinado" | "facturacion" | "equipos_rotos" | "espera" | "gravedad" | "combustible";
+
 export type MotivoPlan = "inicio" | "terminado" | "periodico" | "falla_nueva" | "admin" | "salteado" | "manual";
 
 export interface Plan {
@@ -160,6 +163,7 @@ export interface Plan {
   minutosTotales: number;
   kmTotales: number;
   retornoBase?: RetornoBase;
+  criterioRuteo?: CriterioRuteo;
   objetivo: number;
   estado: string;
   segundos: number;
