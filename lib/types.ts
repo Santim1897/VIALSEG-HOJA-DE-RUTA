@@ -52,6 +52,7 @@ export interface Usuario {
   rol: Rol;
   usuario?: string; // login del administrador
   telefono?: string;
+  domicilio?: Punto & { direccion: string };
   hash: string; // contraseña (admin) o PIN (conductor), scrypt
   sal: string;
   version: number; // cambia al resetear la clave: invalida sesiones abiertas
@@ -93,7 +94,7 @@ export interface Camioneta {
 
 export interface Posicion extends Punto {
   at: string;
-  fuente: "gps" | "sede" | "country";
+  fuente: "gps" | "sede" | "country" | "domicilio";
 }
 
 export interface CacheMatriz {
@@ -144,6 +145,10 @@ export interface RetornoBase {
   minutos: number;
   km: number;
   llegadaMin: number;
+  nombre?: string;
+  direccion?: string;
+  lat?: number;
+  lon?: number;
 }
 
 export type CriterioRuteo = "combinado" | "facturacion" | "equipos_rotos" | "espera" | "gravedad" | "combustible";

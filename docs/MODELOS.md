@@ -23,7 +23,7 @@ Dónde está cada cosa: la fórmula del premio en `lib/premio.ts`; los pesos en 
 
 ## Criterio del recorrido por jornada
 
-En **Planificación**, el administrador puede elegir el objetivo de cada camioneta para la fecha seleccionada. El criterio queda guardado en esa jornada; si cambia de conductor, el objetivo sigue perteneciendo a la jornada y a la camioneta.
+En **Planificación**, el administrador puede elegir el objetivo de cada camioneta para la fecha seleccionada. El criterio queda guardado en esa jornada; si cambia de conductor, el objetivo sigue perteneciendo a la jornada y a la camioneta. Al iniciar, quedan bloqueados tanto el criterio como los countries asignados hasta la próxima jornada.
 
 - **Combinado (actual):** conserva el puntaje y los pesos configurables descritos arriba.
 - **Facturación por barrio:** maximiza la suma de la facturación mensual de los barrios visitados.
@@ -32,12 +32,12 @@ En **Planificación**, el administrador puede elegir el objetivo de cada camione
 - **Gravedad de las fallas:** maximiza la suma de gravedad (escala 1 a 5) de las fallas abiertas atendidas.
 - **Cobertura y combustible:** primero maximiza la cantidad de barrios atendidos dentro del horario y con regreso a la base; entre las soluciones con esa cantidad máxima, minimiza los kilómetros totales, incluido el regreso.
 
-Los criterios individuales no suman facturación, antigüedad, cantidad y gravedad en un puntaje conjunto. Todos respetan la duración de servicio y el regreso a la sede dentro de la jornada. En combustible, la prioridad de cobertura se implementa con una cota derivada de la máxima distancia posible, para asegurar que un kilómetro no pueda compensar la pérdida de un barrio.
+Los criterios individuales no suman facturación, antigüedad, cantidad y gravedad en un puntaje conjunto. Todos respetan la duración de servicio y el regreso al domicilio del conductor asignado dentro de la jornada; al iniciar la ruta parte del domicilio configurado, y los recálculos posteriores usan la posición actual conocida. Si el domicilio no está configurado, no se puede iniciar la jornada. En combustible, la prioridad de cobertura se implementa con una cota derivada de la máxima distancia posible, para asegurar que un kilómetro no pueda compensar la pérdida de un barrio.
 
 
 ## 2. Ruteo de una camioneta (`ruteo.py`)
 
-Nodos: 0 = posición actual (GPS), 1..n = countries asignados con fallas, n+1 = regreso a base (SEDE). dᵢⱼ = minutos de manejo (con tráfico en vivo), T = minutos que quedan de jornada laboral (el conductor debe regresar a la base dentro de ese horario).
+Nodos: 0 = domicilio del conductor al iniciar o posición actual conocida al recalcular, 1..n = countries asignados con fallas, n+1 = domicilio del conductor. dᵢⱼ = minutos de manejo (con tráfico en vivo), T = minutos que quedan de jornada laboral (el conductor debe regresar a su domicilio dentro de ese horario).
 
 **Variables:** xᵢⱼ ∈ {0,1} (de i va a j), vⱼ ∈ {0,1} (se visita j), tⱼ ≥ 0 (minuto de llegada a j).
 
@@ -53,10 +53,10 @@ premio de lo atendido − castigo por atender tarde lo urgente (u = 0,5) − cos
 
 ```
 Σⱼ x₀ⱼ = 1                              sale una vez de donde está
-Σᵢ xᵢ,ₙ₊₁ = 1                            termina en la base (SEDE)
+Σᵢ xᵢ,ₙ₊₁ = 1                            termina en el domicilio del conductor
 Σᵢ xᵢⱼ = vⱼ = Σₖ xⱼₖ                     entra y sale de cada country visitado
 tⱼ ≥ tᵢ + sᵢ + dᵢⱼ − Mᵢⱼ(1 − xᵢⱼ)        tiempos encadenados (MTZ, sin subrecorridos)
-tⱼ ≤ T·vⱼ ,  tₙ₊₁ ≤ T                     regreso a base dentro de la jornada
+tⱼ ≤ T·vⱼ ,  tₙ₊₁ ≤ T                     regreso al domicilio dentro de la jornada
 x₀f = 1                                 destino fijado (el conductor ya va en camino / lo forzó el admin)
 ```
 

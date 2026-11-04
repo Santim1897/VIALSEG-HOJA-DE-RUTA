@@ -100,6 +100,15 @@ export default function Mapa({ datos, alto = 520 }: { datos: DatosMapa; alto?: n
         }),
       )}
 
+      {camionetas.filter((c) => visibles[c.id] !== false).map((c) => {
+        const destino = planes[c.id]?.retornoBase;
+        return destino?.lat != null && destino.lon != null ? (
+          <Marker key={`destino-${c.id}`} position={[destino.lat, destino.lon]} icon={iconoBase} zIndexOffset={850}>
+            <Tooltip direction="top">{destino.nombre ?? "Destino final"} · {destino.direccion ?? ""}</Tooltip>
+          </Marker>
+        ) : null;
+      })}
+
       <Marker position={[SEDE.lat, SEDE.lon]} icon={iconoBase} zIndexOffset={800}>
         <Tooltip direction="top">{`${SEDE.nombre} · ${SEDE.direccion}`}</Tooltip>
       </Marker>
