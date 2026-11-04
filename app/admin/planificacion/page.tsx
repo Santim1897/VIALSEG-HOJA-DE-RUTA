@@ -4,8 +4,17 @@ import { postJson, useAdmin } from "@/components/admin/datos";
 import { Encabezado } from "@/components/admin/Shell";
 import { Boton, campo, Confirmar, Etiqueta, Gravedad, Tarjeta, td, th } from "@/components/ui";
 import { duracion, fechaLarga, hoy } from "@/lib/tiempo";
+import type { CriterioRuteo } from "@/lib/types";
 
-type Borrador = Record<string, { conductorId: string | null; countries: string[] }>;
+type Borrador = Record<string, { conductorId: string | null; countries: string[]; criterioRuteo: CriterioRuteo }>;
+const criterios: { id: CriterioRuteo; nombre: string }[] = [
+  { id: "combinado", nombre: "Combinado (actual)" },
+  { id: "facturacion", nombre: "Facturación por barrio" },
+  { id: "equipos_rotos", nombre: "Cantidad de equipos rotos" },
+  { id: "espera", nombre: "Fallas más antiguas" },
+  { id: "gravedad", nombre: "Gravedad de las fallas" },
+  { id: "combustible", nombre: "Combustible: más barrios, menos km" },
+];
 interface Sugerencia { asignacion: Record<string, string[]>; sin_asignar: string[]; carga_minutos: Record<string, number> }
 
 const sumarDias = (f: string, n: number) => {
@@ -37,7 +46,7 @@ export default function Planificacion() {
   const actual: Borrador = useMemo(
     () => Object.fromEntries(e.camionetas.map((c) => {
       const j = e.jornadasPlan.find((x) => x.camionetaId === c.id)!;
-      return [c.id, { conductorId: j.conductorId ?? null, countries: j.countries }];
+      return [c.id, { conductorId: j.conductorId ?? null, countries: j.countries, criterioRuteo: j.criterioRuteo ?? "combinado" }];
     })),
     [e],
   );
@@ -65,8 +74,9 @@ export default function Planificacion() {
       conductor: a.conductorId !== n.conductorId ? n.conductorId : undefined,
       mas: n.countries.filter((x) => !a.countries.includes(x)),
       menos: a.countries.filter((x) => !n.countries.includes(x)),
+      criterio: a.criterioRuteo !== n.criterioRuteo ? n.criterioRuteo : undefined,
     };
-  }).filter((x) => x.conductor !== undefined || x.mas.length || x.menos.length);
+  }).filter((x) => x.conductor !== undefined || x.mas.length || x.menos.length || x.criterio !== undefined);
   const puedeGuardar = cambios.length > 0 || heredado;
 
   async function sugerir() {
@@ -94,6 +104,7 @@ export default function Planificacion() {
       x.conductor !== undefined && `conductor ${nombreU(x.conductor)}`,
       x.mas.length && `+${x.mas.map(nombreC).join(", ")}`,
       x.menos.length && `−${x.menos.map(nombreC).join(", ")}`,
+      x.criterio && `criterio ${criterios.find((k) => k.id === x.criterio)?.nombre}`,
     ].filter(Boolean).join("; ")}`).join(" | ");
     try {
       await accion({ accion: "plan_dia", fecha, planes: e.camionetas.map((c) => ({ camionetaId: c.id, ...vista[c.id] })), resumen }, "Plan guardado");
@@ -109,7 +120,7 @@ export default function Planificacion() {
     <>
       <Encabezado
         titulo="Planificación"
-        descripcion="Qué conductor maneja cada camioneta y qué countries atiende."
+        descripcion="Asigná conductores, barrios y el objetivo del recorrido para cada jornada."
         acciones={
           <div className="flex items-center gap-2">
             <Boton variante="secundario" disabled={!!borrador || fecha === hoy()} onClick={() => setFechaPlan(sumarDias(fecha, -1) < hoy() ? hoy() : sumarDias(fecha, -1))} aria-label="Día anterior">←</Boton>
@@ -165,6 +176,17 @@ export default function Planificacion() {
                 ) : (
                   <p className="text-sm"><span className="text-gris">Conductor: </span><b className={`font-medium ${v.conductorId ? "" : "text-amber-700"}`}>{nombreU(v.conductorId)}</b></p>
                 )}
+                {borrador ? (
+                  <label className="block text-sm">
+                    <span className="mb-1 block text-gris">Objetivo del recorrido para esta jornada</span>
+                    <select className={campo} value={v.criterioRuteo} onChange={(ev) => setBorrador({ ...vista, [c.id]: { ...v, criterioRuteo: ev.target.value as CriterioRuteo } })}>
+                      {criterios.map((x) => <option key={x.id} value={x.id}>{x.nombre}</option>)}
+                    </select>
+                  </label>
+                ) : (
+                  <p className="text-sm"><span className="text-gris">Objetivo: </span><b className="font-medium">{criterios.find((x) => x.id === v.criterioRuteo)?.nombre ?? criterios[0].nombre}</b></p>
+                )}
+                {v.criterioRuteo === "combustible" && <p className="text-xs text-gris">Primero busca incluir la mayor cantidad de barrios posible; luego minimiza los kilómetros, incluido el regreso a la base.</p>}
                 <p className="tabular text-xs text-gris">{v.countries.length} countries · {minutos} min de trabajo en sitio{sugerencia?.carga_minutos[c.id] ? ` · ~${Math.round(sugerencia.carga_minutos[c.id] / 6) / 10} h con manejo` : ""}</p>
                 <ul className="space-y-1">
                   {v.countries.length === 0 && <li className="text-sm text-gris">Sin countries asignados.</li>}
@@ -241,6 +263,7 @@ export default function Planificacion() {
                 <p className="font-semibold" style={{ color: x.c.color }}>{x.c.nombre}</p>
                 <ul className="mt-1 space-y-0.5 text-sm">
                   {x.conductor !== undefined && <li>Conductor: {nombreU(actual[x.c.id].conductorId)} → <b>{nombreU(x.conductor)}</b></li>}
+                  {x.criterio !== undefined && <li>Objetivo del recorrido: <b>{criterios.find((k) => k.id === x.criterio)?.nombre}</b></li>}
                   {x.mas.length > 0 && <li className="text-green-700">Agrega: {x.mas.map(nombreC).join(", ")}</li>}
                   {x.menos.length > 0 && <li className="text-red-700">Quita: {x.menos.map(nombreC).join(", ")}</li>}
                 </ul>

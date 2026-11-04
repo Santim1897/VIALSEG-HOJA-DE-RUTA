@@ -5,9 +5,11 @@ interface Entrada {
   tiempos: number[][];
   disponible: number;
   fijo?: string | null;
+  criterio?: string;
+  distancias?: number[][];
 }
 
-export function premioFaltante({ countries, tiempos, disponible, fijo }: Entrada) {
+export function premioFaltante({ countries, tiempos, disponible, fijo, criterio = "combinado", distancias = tiempos }: Entrada) {
   const base = countries.length + 1;
   const pendientes = new Set(countries.map((_, i) => i + 1));
   const orden: number[] = [];
@@ -20,7 +22,11 @@ export function premioFaltante({ countries, tiempos, disponible, fijo }: Entrada
     for (const j of pendientes) {
       const llegada = t + tiempos[actual][j];
       if (llegada + countries[j - 1].servicio + tiempos[j][base] > disponible) continue;
-      const ratio = countries[j - 1].id === fijo && orden.length === 0 ? Infinity : countries[j - 1].premio / (tiempos[actual][j] + countries[j - 1].servicio);
+      let ratio: number;
+      if (countries[j - 1].id === fijo && orden.length === 0) ratio = Infinity;
+      else if (criterio === "combustible") ratio = -(distancias[actual]?.[j] ?? tiempos[actual][j]) - (distancias[j]?.[base] ?? tiempos[j][base]);
+      else if (criterio === "combinado") ratio = countries[j - 1].premio / (tiempos[actual][j] + countries[j - 1].servicio);
+      else ratio = countries[j - 1].premio;
       if (ratio > mejorRatio) [mejor, mejorRatio] = [j, ratio];
     }
     if (mejor < 0) break;

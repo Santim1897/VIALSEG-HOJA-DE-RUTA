@@ -13,6 +13,10 @@ export interface Valoracion {
   equipos: number;
   pctRotos: number;
   horasMax: number;
+  facturacion: number;
+  equiposRotos: number;
+  esperaHoras: number;
+  gravedadTotal: number;
   detalle: { gravedadPonderada: number; factorFacturacion: number; factorRotos: number };
 }
 
@@ -27,6 +31,8 @@ export function valorar(db: DB, p: Parametros, ahora = Date.now()): Map<string, 
     const pctRotos = equipos ? rotos / equipos : 0;
     const gravedadPonderada = fallas.reduce(
       (s, f) => s + f.gravedad * (1 + Math.min(horasDesde(f.abiertaAt, ahora) / 24, 4) * p.factorHoras), 0);
+    const gravedadTotal = fallas.reduce((s, f) => s + f.gravedad, 0);
+    const esperaHoras = fallas.reduce((s, f) => s + horasDesde(f.abiertaAt, ahora), 0);
     const factorFacturacion = 1 + p.factorFacturacion * (c.facturacion / maxFact);
     const factorRotos = 1 + p.factorRotos * pctRotos;
     res.set(c.id, {
@@ -34,6 +40,10 @@ export function valorar(db: DB, p: Parametros, ahora = Date.now()): Map<string, 
       premio: Math.round(gravedadPonderada * factorFacturacion * factorRotos * 100) / 100,
       servicioMin: fallas.length ? c.ingresoMin + p.minutosPorFalla * fallas.length : 0,
       fallas,
+      facturacion: c.facturacion,
+      equiposRotos: rotos,
+      esperaHoras,
+      gravedadTotal,
       gravedadMax: Math.max(0, ...fallas.map((f) => f.gravedad)),
       equipos,
       pctRotos,
