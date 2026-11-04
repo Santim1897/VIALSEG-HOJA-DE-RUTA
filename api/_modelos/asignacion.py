@@ -8,6 +8,7 @@ ESTADOS_FACTIBLES = (pywraplp.Solver.OPTIMAL, pywraplp.Solver.FEASIBLE)
 
 def resolver_asignacion(datos: dict) -> dict:
     camionetas, countries, tiempos = datos["camionetas"], datos["countries"], datos["tiempos"]
+    distancias = datos.get("distancias", tiempos)
     criterios, fijos = datos.get("criterios", {}), datos.get("fijos", [])
     inicio = perf_counter()
     ids_cam = [c["id"] for c in camionetas]
