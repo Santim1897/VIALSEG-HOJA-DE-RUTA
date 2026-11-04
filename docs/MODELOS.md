@@ -64,25 +64,13 @@ x₀f = 1                                 destino fijado (el conductor ya va en 
 
 Medición (10 countries): PD 0,05 s vs. PLE > 10 s. El término de urgencia (premio × hora de llegada) hace débil la relajación lineal de la PLE.
 
-## 3. Asignación de countries a camionetas (`asignacion.py`)
+## 3. Asignación automática por criterio y prioridad fija (`asignacion.py`)
 
-Adaptación del modelo de **alocación de demanda por maximización de beneficios** (Chopra & Meindl, cap. 5; diapositiva 53):
+**Sugerir distribución** considera todos los countries activos con fallas abiertas y los criterios elegidos en el borrador para esa fecha. Procesa las camionetas en el orden mostrado en Planificación (camioneta 1, luego 2 y 3). Cada una elige sus countries maximizando su propio criterio entre los que siguen libres; después, la siguiente optimiza el suyo entre los restantes. Así no se suman ni comparan facturación, horas, cantidad de equipos y gravedad en una escala común. Cada country se asigna como máximo una vez. Las visitas ya iniciadas quedan fijas.
 
-| Materia | Vialseg |
-|---|---|
-| Planta i, capacidad Kᵢ | Camioneta i, minutos de jornada × 0,85 (holgura para traslados entre countries) |
-| Costo fijo fᵢ | Costo de sacar la camioneta (0 por defecto: salen todas) |
-| Mercado j, precio pⱼ | Country con fallas, premio |
-| Costo cᵢⱼ | Minutos desde la ubicación de la camioneta i (o la sede) hasta j × costo por minuto |
+La asignación de cada camioneta es un modelo binario de selección con límite de jornada aproximado: cada country consume el tiempo de servicio más el viaje de ida; la capacidad conserva el 15% de holgura para traslados entre barrios. Para **combinado, facturación, equipos rotos, espera y gravedad**, primero se maximiza la suma del criterio elegido; si hay empate, se priorizan más barrios y luego menos tiempo de viaje de ida. Para **combustible**, primero se maximiza la cantidad de barrios y luego se minimizan los kilómetros de viaje de ida. La ruta concreta se calcula después e incluye el regreso a la base dentro de la jornada.
 
-```
-max  Σᵢⱼ pⱼ·xᵢⱼ − Σᵢ fᵢ·yᵢ − c·Σᵢⱼ dᵢⱼ·xᵢⱼ
-s.a. Σᵢ xᵢⱼ ≤ 1                       cada country, una sola camioneta
-     Σⱼ (sⱼ + dᵢⱼ)·xᵢⱼ ≤ Kᵢ·yᵢ        no superar la jornada
-     xᵢⱼ = 1 para decisiones ya tomadas (countries ya atendidos por una camioneta en ruta)
-```
 
-Es un esquema "primero agrupar, después rutear": la asignación aproxima el manejo con la ida desde la base y el ruteo calcula la secuencia real. Con costo fijo > 0 el modelo consolida camionetas (economías de escala, como en el TP de TelecomOptic).
 
 ## 4. Conexión con la teoría (para el informe)
 

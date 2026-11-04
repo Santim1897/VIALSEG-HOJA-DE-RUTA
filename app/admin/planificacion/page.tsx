@@ -82,7 +82,11 @@ export default function Planificacion() {
   async function sugerir() {
     setSugiriendo(true);
     try {
-      const s = await postJson<Sugerencia>("/api/admin", { accion: "sugerir_asignacion" });
+      const s = await postJson<Sugerencia>("/api/admin", {
+        accion: "sugerir_asignacion",
+        fecha,
+        criterios: Object.fromEntries(e.camionetas.map((c) => [c.id, vista[c.id].criterioRuteo])),
+      });
       setSugerencia(s);
       const b: Borrador = structuredClone(vista);
       for (const c of e.camionetas) {
@@ -149,6 +153,7 @@ export default function Planificacion() {
           )}
         </div>
       </div>
+      {borrador && <p className="mb-4 text-xs text-gris">La sugerencia procesa las camionetas en este orden: <b>{e.camionetas.map((c) => c.nombre).join(" → ")}</b>. Cada country se asigna como máximo a una camioneta.</p>}
       {error && <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
 
       <section className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">

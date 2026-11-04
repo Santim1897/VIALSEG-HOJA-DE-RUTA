@@ -7,6 +7,7 @@ Qué se decidió, por qué y qué queda pendiente. Agregar una entrada por cada 
 | # | Decisión | Motivo |
 |---|---|---|
 | 36 | En Planificación, el administrador elige para cada camioneta y fecha uno de estos criterios: combinado actual, facturación, cantidad absoluta de equipos rotos, antigüedad de fallas, gravedad o máximo de barrios con mínimo de kilómetros. El criterio se guarda en la jornada; el modo de combustible maximiza primero los barrios atendidos y minimiza luego la distancia total, incluido el regreso a la sede | Comparar planes con objetivos distintos sin asignar pesos arbitrarios entre criterios |
+| 37 | La sugerencia procesa las camionetas en el orden mostrado y optimiza el criterio de cada una entre los countries con fallas que aún no fueron asignados. Cada country queda como máximo en una camioneta y las visitas ya iniciadas se mantienen fijas. En empate, prioriza más barrios y después menos tiempo de viaje | Evitar comparar criterios con unidades distintas; resolver explícitamente conflictos entre camionetas |
 
 ## 2026-10-04 · Datos operativos reales y simplificación
 

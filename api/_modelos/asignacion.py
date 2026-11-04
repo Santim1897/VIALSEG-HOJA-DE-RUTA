@@ -1,84 +1,110 @@
-"""Asignación de countries a camionetas (programación lineal entera, OR-Tools + SCIP).
-
-Es el modelo de "Alocación de demanda por maximización de beneficios" de la unidad
-Redes de Distribución (Chopra & Meindl, cap. 5), adaptado:
-
-    planta i      → camioneta i          capacidad K_i → minutos de jornada
-    mercado j     → country con fallas   precio p_j    → premio de reparar ese country
-    costo fijo f_i → costo de sacar la camioneta ese día
-    costo c_ij    → minutos de manejo desde donde está la camioneta (o la sede) al country × costo por minuto
-
-Variables
-    y[i]   ∈ {0,1}  1 si la camioneta i sale hoy
-    x[i,j] ∈ {0,1}  1 si la camioneta i atiende el country j
-
-Objetivo (maximizar)
-    Σ_ij p_j·x_ij − Σ_i f_i·y_i − c · Σ_ij d_ij·x_ij
-
-Restricciones
-    Σ_i x_ij ≤ 1                          cada country lo atiende como máximo una camioneta
-    Σ_j (s_j + d_ij)·x_ij ≤ K_i·y_i       no superar la jornada (aproximación: ida desde la camioneta)
-    x_ij = 1  para las decisiones ya tomadas por el administrador (no se cambian)
-
-La secuencia real de cada camioneta la resuelve después el modelo de ruteo
-("primero agrupar, después rutear").
-"""
+"""Asignación secuencial de countries por criterio de cada camioneta (OR-Tools)."""
 from __future__ import annotations
-
 from time import perf_counter
-
 from ortools.linear_solver import pywraplp
+
+ESTADOS_FACTIBLES = (pywraplp.Solver.OPTIMAL, pywraplp.Solver.FEASIBLE)
 
 
 def resolver_asignacion(datos: dict) -> dict:
-    camionetas = datos["camionetas"]  # [{id, capacidad, costo_fijo}]
-    countries = datos["countries"]  # [{id, premio, servicio}]
-    d = datos["tiempos"]  # d[i][j] minutos desde la camioneta i → country j
-    c = float(datos.get("costo_minuto", 0.05))
-    fijos = datos.get("fijos", [])  # [{camioneta, country}]
-
-    solver = pywraplp.Solver.CreateSolver("SCIP") or pywraplp.Solver.CreateSolver("CBC")
-    solver.SetTimeLimit(int(datos.get("limite_ms", 8000)))
+    camionetas, countries, tiempos = datos["camionetas"], datos["countries"], datos["tiempos"]
+    distancias = datos.get("distancias", tiempos)
+    criterios, fijos = datos.get("criterios", {}), datos.get("fijos", [])
     inicio = perf_counter()
-    I, J = range(len(camionetas)), range(len(countries))
+    ids_cam = [c["id"] for c in camionetas]
+    ids_country = [c["id"] for c in countries]
+    indice = {country_id: j for j, country_id in enumerate(ids_country)}
+    asignacion, cargas = {cam: [] for cam in ids_cam}, {cam: 0.0 for cam in ids_cam}
+    usados: set[str] = set()
+    fijados: dict[str, list[str]] = {cam: [] for cam in ids_cam}
 
-    y = {i: solver.BoolVar(f"y_{i}") for i in I}
-    x = {(i, j): solver.BoolVar(f"x_{i}_{j}") for i in I for j in J}
-    for j in J:
-        solver.Add(sum(x[i, j] for i in I) <= 1)
-    for i in I:
-        carga = sum((float(countries[j]["servicio"]) + float(d[i][j])) * x[i, j] for j in J)
-        solver.Add(carga <= float(camionetas[i]["capacidad"]) * y[i])
+    # Mantener las visitas ya iniciadas antes de optimizar los countries libres.
+    for fijo in fijos:
+        cam, country_id = fijo.get("camioneta"), fijo.get("country")
+        if cam not in fijados or country_id not in indice:
+            continue
+        if country_id in usados:
+            return {"estado": "SIN_SOLUCION", "asignacion": asignacion, "sin_asignar": ids_country,
+                    "carga_minutos": cargas, "segundos": round(perf_counter() - inicio, 3)}
+        fijados[cam].append(country_id)
+        usados.add(country_id)
 
-    ids_cam = [k["id"] for k in camionetas]
-    ids_cty = [k["id"] for k in countries]
-    for f in fijos:
-        if f["camioneta"] in ids_cam and f["country"] in ids_cty:
-            solver.Add(x[ids_cam.index(f["camioneta"]), ids_cty.index(f["country"])] == 1)
+    objetivo_total, todo_optimo = 0.0, True
+    # El orden recibido es la prioridad fija. Cada camioneta optimiza su criterio
+    # entre los barrios libres; las siguientes trabajan con lo que quedó.
+    for i, cam in enumerate(camionetas):
+        cam_id = cam["id"]
+        criterio = criterios.get(cam_id, cam.get("criterio", "combinado"))
+        for country_id in fijados[cam_id]:
+            asignacion[cam_id].append(country_id)
+            j = indice[country_id]
+            cargas[cam_id] += float(countries[j]["servicio"]) + float(tiempos[i][j])
+            objetivo_total += _valor(countries[j], criterio)
 
-    solver.Maximize(
-        sum(float(countries[j]["premio"]) * x[i, j] for i in I for j in J)
-        - sum(float(camionetas[i].get("costo_fijo", 0)) * y[i] for i in I)
-        - c * sum(float(d[i][j]) * x[i, j] for i in I for j in J)
-    )
-    estado = solver.Solve()
-    segundos = round(perf_counter() - inicio, 3)
-    if estado not in (pywraplp.Solver.OPTIMAL, pywraplp.Solver.FEASIBLE):
-        return {"estado": "SIN_SOLUCION", "asignacion": {}, "sin_asignar": ids_cty, "segundos": segundos}
+        candidatos = [j for j, c in enumerate(countries) if c["id"] not in usados]
+        capacidad = max(0.0, float(cam["capacidad"]) - cargas[cam_id])
+        if not candidatos or capacidad <= 0:
+            continue
+        solver = pywraplp.Solver.CreateSolver("SCIP") or pywraplp.Solver.CreateSolver("CBC")
+        if solver is None:
+            return {"estado": "SIN_SOLUCION", "asignacion": asignacion,
+                    "sin_asignar": [c for c in ids_country if c not in usados],
+                    "carga_minutos": {k: round(v, 1) for k, v in cargas.items()},
+                    "segundos": round(perf_counter() - inicio, 3)}
+        solver.SetTimeLimit(int(datos.get("limite_ms", 8000)))
+        x = {j: solver.BoolVar(f"x_{i}_{j}") for j in candidatos}
+        carga = sum((float(countries[j]["servicio"]) + float(tiempos[i][j])) * x[j] for j in candidatos)
+        solver.Add(carga <= capacidad)
+        puntaje = sum(_valor(countries[j], criterio) * x[j] for j in candidatos)
+        cantidad = sum(x.values())
+        distancia = sum(float((distancias if criterio == "combustible" else tiempos)[i][j]) * x[j] for j in candidatos)
 
-    asignacion = {k["id"]: [] for k in camionetas}
-    usados = set()
-    for (i, j), var in x.items():
-        if var.solution_value() > 0.5:
-            asignacion[ids_cam[i]].append(ids_cty[j])
-            usados.add(j)
-    carga = {ids_cam[i]: round(sum((countries[j]["servicio"] + d[i][j]) * x[i, j].solution_value() for j in J), 1)
-             for i in I}
-    return {
-        "estado": "OPTIMO" if estado == pywraplp.Solver.OPTIMAL else "FACTIBLE",
-        "asignacion": asignacion,
-        "sin_asignar": [ids_cty[j] for j in J if j not in usados],
-        "carga_minutos": carga,
-        "objetivo": round(solver.Objective().Value(), 3),
-        "segundos": segundos,
-    }
+        # No se mezclan unidades: el criterio elegido manda y los demás solo desempatan.
+        if criterio == "combustible":
+            solver.Maximize(cantidad)
+            estado = solver.Solve()
+            if estado not in ESTADOS_FACTIBLES:
+                continue
+            todo_optimo &= estado == pywraplp.Solver.OPTIMAL
+            solver.Add(cantidad == round(solver.Objective().Value()))
+            solver.Minimize(distancia)
+            estado = solver.Solve()
+        else:
+            solver.Maximize(puntaje)
+            estado = solver.Solve()
+            if estado not in ESTADOS_FACTIBLES:
+                continue
+            todo_optimo &= estado == pywraplp.Solver.OPTIMAL
+            solver.Add(puntaje >= solver.Objective().Value() - 1e-6)
+            solver.Maximize(cantidad)
+            estado = solver.Solve()
+            if estado not in ESTADOS_FACTIBLES:
+                continue
+            todo_optimo &= estado == pywraplp.Solver.OPTIMAL
+            solver.Add(cantidad == round(solver.Objective().Value()))
+            solver.Minimize(distancia)
+            estado = solver.Solve()
+
+        if estado not in ESTADOS_FACTIBLES:
+            continue
+        todo_optimo &= estado == pywraplp.Solver.OPTIMAL
+        for j, variable in x.items():
+            if variable.solution_value() > 0.5:
+                country_id = countries[j]["id"]
+                asignacion[cam_id].append(country_id)
+                usados.add(country_id)
+                cargas[cam_id] += float(countries[j]["servicio"]) + float(tiempos[i][j])
+                objetivo_total += _valor(countries[j], criterio)
+
+    return {"estado": "OPTIMO" if todo_optimo else "FACTIBLE",
+            "asignacion": asignacion,
+            "sin_asignar": [country for country in ids_country if country not in usados],
+            "carga_minutos": {cam: round(carga, 1) for cam, carga in cargas.items()},
+            "objetivo": round(objetivo_total, 3),
+            "segundos": round(perf_counter() - inicio, 3)}
+
+
+def _valor(country: dict, criterio: str) -> float:
+    campos = {"combinado": "premio", "facturacion": "facturacion",
+              "equipos_rotos": "equipos_rotos", "espera": "espera", "gravedad": "gravedad"}
+    return float(country.get(campos.get(criterio, "premio"), 0))

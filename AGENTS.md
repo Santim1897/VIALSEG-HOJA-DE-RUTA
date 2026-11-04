@@ -43,6 +43,8 @@ Sistema de ruteo de las camionetas de mantenimiento de Vialseg en barrios privad
 - Informar archivos modificados y validaciones realizadas al terminar.
 - Si falta una decisión de negocio —por ejemplo, cambiar pesos o criterios— pedir definición antes de inventar una política nueva.
 
+La sugerencia automática considera todos los countries con fallas abiertas, optimiza por turno el criterio elegido para cada camioneta en el orden mostrado en Planificación y asigna cada country como máximo una vez. Documentar cambios a esta política en README.md, docs/MODELOS.md y docs/DECISIONES.md.
+
 ## Revisión obligatoria en GitHub
 
 `.github/CODEOWNERS` designa a @Santim1897 como responsable de todos los archivos. Para que su revisión sea obligatoria, ese archivo debe estar incorporado a `main` y GitHub debe tener activa una regla de protección que exija Pull Request y revisión de Code Owners. La documentación por sí sola no activa esa protección.
