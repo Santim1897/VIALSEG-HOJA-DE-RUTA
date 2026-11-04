@@ -8,7 +8,7 @@ import type { CriterioRuteo } from "@/lib/types";
 
 type Borrador = Record<string, { conductorId: string | null; countries: string[]; criterioRuteo: CriterioRuteo }>;
 const criterios: { id: CriterioRuteo; nombre: string }[] = [
-  { id: "combinado", nombre: "Combinado (actual)" },
+  { id: "combinado", nombre: "Combinada" },
   { id: "facturacion", nombre: "Facturación por barrio" },
   { id: "equipos_rotos", nombre: "Cantidad de equipos rotos" },
   { id: "espera", nombre: "Fallas más antiguas" },
@@ -149,14 +149,19 @@ export default function Planificacion() {
             <Boton onClick={() => setBorrador(structuredClone(actual))}>Editar plan</Boton>
           ) : (
             <>
-              <Boton variante="secundario" onClick={sugerir} disabled={sugiriendo}>{sugiriendo ? "Calculando…" : "Sugerir distribución"}</Boton>
+              <Boton variante="secundario" onClick={sugerir} disabled={sugiriendo}>{sugiriendo ? "Calculando…" : "Recalcular distribución"}</Boton>
               <Boton variante="fantasma" onClick={() => { setBorrador(null); setSugerencia(null); setError(""); }}>Descartar</Boton>
               <Boton onClick={() => setConfirmar(true)} disabled={!puedeGuardar}>Revisar y guardar</Boton>
             </>
           )}
         </div>
       </div>
-      {borrador && <p className="mb-4 text-xs text-gris">La sugerencia procesa las camionetas en este orden: <b>{e.camionetas.map((c) => c.nombre).join(" → ")}</b>. Cada country se asigna como máximo a una camioneta.</p>}
+      {borrador && (
+        <div className="mb-4 rounded-lg border border-azul/20 bg-white px-4 py-3 text-sm text-gris">
+          <p>La distribución automática procesa las camionetas en este orden: <b>{e.camionetas.map((c) => c.nombre).join(" → ")}</b>. Cada country se asigna como máximo a una camioneta. Las camionetas con jornada iniciada mantienen su distribución y objetivo.</p>
+          <p className="mt-1">Cambiar el objetivo de una jornada pendiente no reasigna los countries por sí solo. Elegí los objetivos y tocá <b>Recalcular distribución</b>; después revisá la propuesta y guardá.</p>
+        </div>
+      )}
       {error && <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
 
       <section className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -187,12 +192,17 @@ export default function Planificacion() {
                 {borrador ? (
                   <label className="block text-sm">
                     <span className="mb-1 block text-gris">Objetivo del recorrido para esta jornada</span>
-                    <select className={campo} value={v.criterioRuteo} disabled={j.estado === "activa"} onChange={(ev) => setBorrador({ ...vista, [c.id]: { ...v, criterioRuteo: ev.target.value as CriterioRuteo } })}>
+                    <select className={campo} value={v.criterioRuteo} disabled={j.estado === "activa"} onChange={(ev) => { setSugerencia(null); setBorrador({ ...vista, [c.id]: { ...v, criterioRuteo: ev.target.value as CriterioRuteo } }); }}>
                       {criterios.map((x) => <option key={x.id} value={x.id}>{x.nombre}</option>)}
                     </select>
                   </label>
                 ) : (
                   <p className="text-sm"><span className="text-gris">Objetivo: </span><b className="font-medium">{criterios.find((x) => x.id === v.criterioRuteo)?.nombre ?? criterios[0].nombre}</b></p>
+                )}
+                {v.criterioRuteo === "combinado" && (
+                  <p className="text-xs leading-relaxed text-gris">
+                    Combinación de criterios con los ponderadores vigentes: gravedad (escala 1 a 5); antigüedad (+{Math.round(e.parametros.factorHoras * 100)}% por día, hasta 4 días); facturación (hasta +{Math.round(e.parametros.factorFacturacion * 100)}% según la facturación relativa); equipos rotos (hasta +{Math.round(e.parametros.factorRotos * 100)}% según la proporción de equipos rotos). Al ordenar la ruta también se pondera la demora ({e.parametros.pesoUrgencia}) y el manejo ({e.parametros.costoMinuto} puntos por minuto).
+                  </p>
                 )}
                 {v.criterioRuteo === "combustible" && <p className="text-xs text-gris">Primero busca incluir la mayor cantidad de barrios posible; luego minimiza los kilómetros, incluido el regreso a la base.</p>}
                 <p className="tabular text-xs text-gris">{v.countries.length} countries · {minutos} min de trabajo en sitio{sugerencia?.carga_minutos[c.id] ? ` · ~${Math.round(sugerencia.carga_minutos[c.id] / 6) / 10} h con manejo` : ""}</p>
