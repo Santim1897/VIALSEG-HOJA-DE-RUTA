@@ -2,6 +2,12 @@
 
 Qué se decidió, por qué y qué queda pendiente. Agregar una entrada por cada decisión nueva (la más reciente arriba).
 
+## 2026-11-04 · Reinicio de jornada finalizada al cambiar el plan
+
+| # | Decisión | Motivo |
+|---|---|---|
+| 39 | Si administración modifica el conductor, el objetivo o los countries de una jornada finalizada, esta vuelve a estado pendiente y se limpian sus visitas, posición y plan calculado anterior. En la vista En vivo, solo las jornadas activas aportan rutas y próximos destinos; se conserva el registro de cierres y eventos | Evitar que una prueba o jornada ya terminada contamine el seguimiento de una nueva distribución |
+
 ## 2026-11-04 · Criterio de ruteo seleccionable por jornada
 
 | # | Decisión | Motivo |

@@ -33,7 +33,7 @@ Ingreso único en `/login` con dos roles. Cada rol solo accede a su sección: lo
 - **Recorrido:** mapa y lista del día: atendidos, próximo, pendientes con hora estimada, salteados y los que no entran.
 - **Mi día:** resumen y visitas cerradas; finalizar jornada. Una jornada finalizada se puede reabrir el mismo día; al día siguiente arranca la que planifique administración.
 
-Recálculo: al iniciar, al terminar o saltear, ante una falla nueva en un country asignado y cada 10 minutos con la jornada activa (tráfico). Al iniciar sale del domicilio del conductor; al recalcular usa su posición conocida y siempre vuelve a su domicilio. La distribución y el objetivo quedan bloqueados una vez iniciada la jornada. Si por tráfico conviene otro destino que ahorra más del umbral, se le **sugiere**; no se le cambia solo. Sin señal: se ve el último recorrido y las acciones quedan en una bandeja de salida.
+Recálculo: al iniciar, al terminar o saltear, ante una falla nueva en un country asignado y cada 10 minutos con la jornada activa (tráfico). Al iniciar sale del domicilio del conductor; al recalcular usa su posición conocida y siempre vuelve a su domicilio. La distribución y el objetivo quedan bloqueados una vez iniciada la jornada. Si se cambia una jornada ya finalizada, vuelve a quedar pendiente y comienza con el plan nuevo, sin visitas ni ruta anterior. En En vivo solo se muestran recorridos de jornadas activas. Si por tráfico conviene otro destino que ahorra más del umbral, se le **sugiere**; no se le cambia solo. Sin señal: se ve el último recorrido y las acciones quedan en una bandeja de salida.
 
 ## Arquitectura
 

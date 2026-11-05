@@ -159,7 +159,6 @@ export default function Planificacion() {
       {borrador && (
         <div className="mb-4 rounded-lg border border-azul/20 bg-white px-4 py-3 text-sm text-gris">
           <p>La distribución automática procesa las camionetas en este orden: <b>{e.camionetas.map((c) => c.nombre).join(" → ")}</b>. Cada country se asigna como máximo a una camioneta. Las camionetas con jornada iniciada mantienen su distribución y objetivo.</p>
-          <p className="mt-1">Cambiar el objetivo de una jornada pendiente no reasigna los countries por sí solo. Elegí los objetivos y tocá <b>Recalcular distribución</b>; después revisá la propuesta y guardá.</p>
         </div>
       )}
       {error && <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
@@ -201,7 +200,7 @@ export default function Planificacion() {
                 )}
                 {v.criterioRuteo === "combinado" && (
                   <p className="text-xs leading-relaxed text-gris">
-                    Combinación de criterios con los ponderadores vigentes: gravedad (escala 1 a 5); antigüedad (+{Math.round(e.parametros.factorHoras * 100)}% por día, hasta 4 días); facturación (hasta +{Math.round(e.parametros.factorFacturacion * 100)}% según la facturación relativa); equipos rotos (hasta +{Math.round(e.parametros.factorRotos * 100)}% según la proporción de equipos rotos). Al ordenar la ruta también se pondera la demora ({e.parametros.pesoUrgencia}) y el manejo ({e.parametros.costoMinuto} puntos por minuto).
+                    Combinación de criterios con los ponderadores: gravedad (escala 1 a 5); antigüedad (+{Math.round(e.parametros.factorHoras * 100)}% por día, hasta 4 días); facturación (hasta +{Math.round(e.parametros.factorFacturacion * 100)}% según la facturación relativa); equipos rotos (hasta +{Math.round(e.parametros.factorRotos * 100)}% según la proporción de equipos rotos). Al ordenar la ruta también se pondera la demora ({e.parametros.pesoUrgencia}) y el manejo ({e.parametros.costoMinuto} puntos por minuto).
                   </p>
                 )}
                 {v.criterioRuteo === "combustible" && <p className="text-xs text-gris">Primero busca incluir la mayor cantidad de barrios posible; luego minimiza los kilómetros, incluido el regreso a la base.</p>}
