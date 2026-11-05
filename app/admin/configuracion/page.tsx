@@ -57,6 +57,22 @@ export default function Configuracion() {
     }
   };
 
+  const guardarPlanificacion = async () => {
+    if (guardando || aplicandoGravedad) return;
+    setGuardando(true);
+    try {
+      const parametrosPlanificacion = Object.fromEntries([
+        ...CAMPOS_PLANIFICACION.map(([k]) => [k, p[k]]),
+        ["navegador", p.navegador],
+      ]);
+      await accion({ accion: "parametros", parametros: parametrosPlanificacion }, "Parámetros de ruteo y planificación guardados");
+    } catch (err) {
+      avisar(err instanceof Error ? err.message : "Error");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   const aplicarGravedad = async () => {
     if (guardando || aplicandoGravedad) return;
     setAplicandoGravedad(true);
@@ -105,6 +121,12 @@ export default function Configuracion() {
                 <option value="google">Google Maps</option>
               </select>
             </Campo>
+          </div>
+          <div className="flex justify-end border-t border-linea p-5">
+            <Boton variante="secundario" onClick={guardarPlanificacion} disabled={guardando || aplicandoGravedad}>
+              {guardando && <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" />}
+              {guardando ? "Guardando…" : "Guardar parámetros"}
+            </Boton>
           </div>
         </Tarjeta>
 
