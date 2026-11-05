@@ -200,7 +200,7 @@ export default function Planificacion() {
                 )}
                 {v.criterioRuteo === "combinado" && (
                   <p className="text-xs leading-relaxed text-gris">
-                    Combinación de criterios con los ponderadores: gravedad (escala 1 a 5); antigüedad (+{Math.round(e.parametros.factorHoras * 100)}% por día, hasta 4 días); facturación (hasta +{Math.round(e.parametros.factorFacturacion * 100)}% según la facturación relativa); equipos rotos (hasta +{Math.round(e.parametros.factorRotos * 100)}% según la proporción de equipos rotos). Al ordenar la ruta también se pondera la demora ({e.parametros.pesoUrgencia}) y el manejo ({e.parametros.costoMinuto} puntos por minuto).
+                    Combinación de criterios con los ponderadores configurados en Configuración → “Parámetros para la optimización combinada”: gravedad (escala 1 a 5); antigüedad (+{Math.round(e.parametros.factorHoras * 100)}% por día, hasta 4 días); facturación (hasta +{Math.round(e.parametros.factorFacturacion * 100)}% según la facturación relativa); equipos rotos (hasta +{Math.round(e.parametros.factorRotos * 100)}% según la proporción de equipos rotos). Al ordenar la ruta también se pondera la demora ({e.parametros.pesoUrgencia}) y el manejo ({e.parametros.costoMinuto} puntos por minuto).
                   </p>
                 )}
                 {v.criterioRuteo === "combustible" && <p className="text-xs text-gris">Primero busca incluir la mayor cantidad de barrios posible; luego minimiza los kilómetros, incluido el regreso a la base.</p>}
