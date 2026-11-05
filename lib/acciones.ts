@@ -397,6 +397,25 @@ export async function accionAdmin(origin: string, actor: Usuario, cuerpo: Record
     }
 
     // ---------------------------------------------------------- configuración
+    case "aplicar_gravedad": {
+      const tipos = Array.isArray(cuerpo.tipos) ? cuerpo.tipos as DB["tipos_falla"] : db.tipos_falla;
+      const gravedadPorTipo = new Map(tipos.map((tipo) => [tipo.id, tipo.gravedad]));
+      const actualizadas = db.fallas
+        .filter((f) => f.estado === "abierta" && gravedadPorTipo.has(f.tipoId))
+        .map((f) => ({ ...f, gravedad: gravedadPorTipo.get(f.tipoId)! }));
+      await s.guardar("tipos_falla", tipos);
+      await s.guardar("fallas", actualizadas);
+      const countries = new Set(actualizadas.map((f) => f.countryId));
+      const camionetas = db.camionetas
+        .filter((cam) => {
+          const j = jornadaDe(db, cam.id);
+          return j.estado === "activa" && j.countries.some((id) => countries.has(id));
+        })
+        .map((cam) => cam.id);
+      await registrar("edicion", { detalle: `Gravedad aplicada a ${actualizadas.length} fallas abiertas` });
+      await replanificarActivas(origin, camionetas, "admin");
+      return { ok: true, actualizadas: actualizadas.length };
+    }
     case "parametros":
       await s.guardar("parametros", [{ ...parametros(db), ...(cuerpo.parametros as Partial<Parametros>), id: "general" }]);
       if (cuerpo.tipos) await s.guardar("tipos_falla", cuerpo.tipos as DB["tipos_falla"]);
