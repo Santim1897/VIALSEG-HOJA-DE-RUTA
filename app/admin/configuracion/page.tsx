@@ -35,6 +35,14 @@ export default function Configuracion() {
     }
   };
 
+  const aplicarGravedad = async () => {
+    try {
+      await accion({ accion: "aplicar_gravedad", tipos }, "Gravedad actualizada en las fallas abiertas");
+    } catch (err) {
+      avisar(err instanceof Error ? err.message : "Error");
+    }
+  };
+
   return (
     <>
       <Encabezado titulo="Configuración" acciones={<Boton onClick={guardar}>Guardar cambios</Boton>} />
@@ -96,6 +104,12 @@ export default function Configuracion() {
                 )}
               </tbody>
             </table>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-linea p-5">
+            <p className="max-w-2xl text-sm text-gris">
+              Al aplicar, las fallas abiertas tomarán la gravedad configurada para su tipo. Esto reemplaza cualquier gravedad ajustada individualmente en esas fallas; las fallas resueltas no cambian.
+            </p>
+            <Boton variante="secundario" onClick={aplicarGravedad}>Aplicar gravedad a fallas abiertas</Boton>
           </div>
         </Tarjeta>
 
