@@ -75,6 +75,23 @@ export function DatosAdmin({ children }: { children: React.ReactNode }) {
   }, [cargar, avisar]);
 
   const valor = useMemo(() => ({ estado, error, aviso, fechaPlan, setFechaPlan, cargar, accion, avisar }), [estado, error, aviso, fechaPlan, cargar, accion, avisar]);
+
+  if (!estado) {
+    return (
+      <Contexto.Provider value={valor}>
+        <main className="grid min-h-dvh place-items-center bg-fondo px-4">
+          <section className="w-full max-w-lg rounded-2xl border border-linea bg-white p-6 shadow-sm" aria-live="polite">
+            <h1 className="text-lg font-semibold text-tinta">{error ? "No se pudo cargar el panel" : "Cargando el panel…"}</h1>
+            {error && <p role="alert" className="mt-2 text-sm text-gris">No se pudo conectar con la base de datos. {error}</p>}
+            <button type="button" onClick={() => void cargar()} className="mt-4 rounded-lg bg-noche px-4 py-2 text-sm font-semibold text-white hover:opacity-90">
+              Reintentar
+            </button>
+          </section>
+        </main>
+      </Contexto.Provider>
+    );
+  }
+
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }
 
