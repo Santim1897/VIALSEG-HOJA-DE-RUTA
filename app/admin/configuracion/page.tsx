@@ -46,28 +46,6 @@ export default function Configuracion() {
   return (
     <>
       <Encabezado titulo="Configuración" acciones={<Boton onClick={guardar}>Guardar cambios</Boton>} />
-      <Tarjeta titulo="Cómo se decide el recorrido" subtitulo="Cada country recibe una prioridad; el sistema elige el orden que atiende más prioridad, antes y con menos manejo, dentro de la jornada." className="mb-5">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-sm">
-            <thead className="bg-fondo"><tr><th className={th}>Criterio</th><th className={th}>Cómo influye</th><th className={th}>Valor actual</th></tr></thead>
-            <tbody className="divide-y divide-linea">
-              {[
-                ["Gravedad de cada falla", "Cada falla suma su gravedad (Leve, Media o Crítica), según el producto y lo que le pasa.", "Catálogo de abajo"],
-                ["Tiempo sin funcionar", "Cada día que una falla lleva abierta aumenta su peso (tope: 4 días).", `+${Math.round(p.factorHoras * 100)}% por día (máx. +${Math.round(p.factorHoras * 400)}%)`],
-                ["Tamaño del cliente", "Más prioridad cuanto mayor es el abono mensual del country (el de mayor abono recibe el máximo).", `hasta +${Math.round(p.factorFacturacion * 100)}%`],
-                ["Equipos rotos en el barrio", "Más prioridad cuanto mayor es la proporción de equipos con falla sobre el total del country.", `hasta +${Math.round(p.factorRotos * 100)}% (todo roto)`],
-                ["Urgencia", "Penaliza dejar para el final a los countries de mayor prioridad.", `${p.pesoUrgencia} (0 a 1)`],
-                ["Tiempo de manejo entre countries", "Cada minuto de manejo resta. Con tráfico en vivo cuando está configurado el proveedor.", `${p.costoMinuto} puntos por minuto`],
-                ["Tiempo en cada country", "Ingreso por guardia + un tiempo fijo por cada equipo con falla (incluye el manejo dentro del barrio).", `ingreso del country + ${p.minutosPorFalla} min por equipo`],
-                ["Punto de partida y jornada", "Sale desde donde está la camioneta (GPS; si no hay, desde la sede) y la última visita tiene que terminar dentro del horario. Lo que no entra queda para otro día.", "Horario de cada camioneta (Flota)"],
-              ].map(([c, d, v]) => (
-                <tr key={c}><td className={`${td} font-medium`}>{c}</td><td className={`${td} text-gris`}>{d}</td><td className={`${td} tabular whitespace-nowrap`}>{v}</td></tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Tarjeta>
-
       <div className="grid gap-5 xl:grid-cols-2">
         <Tarjeta titulo="Criterios de ruteo">
           <div className="grid gap-4 p-5 sm:grid-cols-2">
