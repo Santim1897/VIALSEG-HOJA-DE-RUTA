@@ -26,26 +26,51 @@ export default function Configuracion() {
   const [datos, setDatos] = useState<"vaciar_datos" | "datos_ejemplo" | null>(null);
   const [texto, setTexto] = useState("");
   const [error, setError] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [aplicandoGravedad, setAplicandoGravedad] = useState(false);
 
   const guardar = async () => {
+    if (guardando || aplicandoGravedad) return;
+    setGuardando(true);
     try {
       await accion({ accion: "parametros", parametros: p, tipos }, "Configuración guardada");
     } catch (err) {
       avisar(err instanceof Error ? err.message : "Error");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const guardarCriterios = async () => {
+    if (guardando || aplicandoGravedad) return;
+    setGuardando(true);
+    try {
+      await accion({ accion: "parametros", parametros: p }, "Criterios guardados");
+    } catch (err) {
+      avisar(err instanceof Error ? err.message : "Error");
+    } finally {
+      setGuardando(false);
     }
   };
 
   const aplicarGravedad = async () => {
+    if (guardando || aplicandoGravedad) return;
+    setAplicandoGravedad(true);
     try {
       await accion({ accion: "aplicar_gravedad", tipos }, "Gravedad actualizada en las fallas abiertas");
     } catch (err) {
       avisar(err instanceof Error ? err.message : "Error");
+    } finally {
+      setAplicandoGravedad(false);
     }
   };
 
   return (
     <>
-      <Encabezado titulo="Configuración" acciones={<Boton onClick={guardar}>Guardar cambios</Boton>} />
+      <Encabezado titulo="Configuración" acciones={<Boton onClick={guardar} disabled={guardando || aplicandoGravedad}>
+        {guardando && <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" />}
+        {guardando ? "Guardando…" : "Guardar cambios"}
+      </Boton>} />
       <div className="grid gap-5 xl:grid-cols-2">
         <Tarjeta titulo="Criterios de ruteo">
           <div className="grid gap-4 p-5 sm:grid-cols-2">
@@ -60,6 +85,12 @@ export default function Configuracion() {
                 <option value="google">Google Maps</option>
               </select>
             </Campo>
+          </div>
+          <div className="flex justify-end border-t border-linea p-5">
+            <Boton variante="secundario" onClick={guardarCriterios} disabled={guardando || aplicandoGravedad}>
+              {guardando && <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" />}
+              {guardando ? "Guardando…" : "Guardar criterios"}
+            </Boton>
           </div>
         </Tarjeta>
 
@@ -87,7 +118,10 @@ export default function Configuracion() {
             <p className="max-w-2xl text-sm text-gris">
               Al aplicar, las fallas abiertas tomarán la gravedad configurada para su tipo. Esto reemplaza cualquier gravedad ajustada individualmente en esas fallas; las fallas resueltas no cambian.
             </p>
-            <Boton variante="secundario" onClick={aplicarGravedad}>Aplicar gravedad a fallas abiertas</Boton>
+            <Boton variante="secundario" onClick={aplicarGravedad} disabled={guardando || aplicandoGravedad}>
+              {aplicandoGravedad && <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" />}
+              {aplicandoGravedad ? "Aplicando…" : "Aplicar gravedad a fallas abiertas"}
+            </Boton>
           </div>
         </Tarjeta>
 
