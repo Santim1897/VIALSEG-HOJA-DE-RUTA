@@ -14,6 +14,16 @@ const CAMPOS_COMBINADA: [keyof P, string, string, number][] = [
   ["factorRotos", "Peso de equipos rotos en el barrio", "Prioridad extra si gran parte del parque está caído.", 0.05],
 ];
 
+function ayudaPonderador(k: keyof P, ayuda: string, p: P) {
+  const formato = (valor: number) => new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 }).format(valor);
+  if (k === "factorHoras") return `${ayuda} (+${formato(p.factorHoras * 100)}%).`;
+  if (k === "factorFacturacion") return `${ayuda} (hasta +${formato(p.factorFacturacion * 100)}%).`;
+  if (k === "factorRotos") return `${ayuda} (hasta +${formato(p.factorRotos * 100)}%).`;
+  if (k === "pesoUrgencia") return `${ayuda} (peso actual: ${formato(p.pesoUrgencia)}).`;
+  if (k === "costoMinuto") return `${ayuda} (+${formato(p.costoMinuto)} puntos por minuto).`;
+  return ayuda;
+}
+
 const CAMPOS_PLANIFICACION: [keyof P, string, string, number][] = [
   ["minutosPorFalla", "Tiempo por equipo (min)", "Por cada equipo con falla: reparación y manejo dentro del barrio.", 1],
   ["recalculoMin", "Actualizar rutas cada (min)", "Con la jornada en curso, para tener en cuenta el tráfico.", 1],
@@ -95,7 +105,7 @@ export default function Configuracion() {
         <Tarjeta titulo="Parámetros para la optimización combinada">
           <div className="grid gap-4 p-5 sm:grid-cols-2">
             {CAMPOS_COMBINADA.map(([k, titulo, ayuda, paso]) => (
-              <Campo key={k} etiqueta={titulo} ayuda={ayuda}>
+              <Campo key={k} etiqueta={titulo} ayuda={ayudaPonderador(k, ayuda, p)}>
                 <input type="number" step={paso} min={0} className={`${campo} tabular`} value={p[k] as number} onChange={(ev) => setP({ ...p, [k]: Number(ev.target.value) })} />
               </Campo>
             ))}
