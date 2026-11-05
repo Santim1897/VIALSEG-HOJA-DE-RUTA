@@ -30,64 +30,44 @@ class StoreSupabase implements Store {
   async leer(): Promise<DB> {
     const db = vacia();
     let desde = 0;
-    try {
-      for (;;) {
-        const { data, error } = await this.sb.from(TABLA).select("coleccion,data").order("coleccion").order("id").range(desde, desde + 999);
-        if (error) throw new Error(`Supabase: ${error.message}`);
-        for (const fila of data ?? []) (db[fila.coleccion as Coleccion] as unknown[])?.push(fila.data);
-        if (!data || data.length < 1000) break;
-        desde += 1000;
-      }
-      if (!db.usuarios.length && !db.countries.length) {
-        const inicial = datosEjemplo();
-        await this.reiniciar(inicial);
-        return inicial;
-      }
-      if (!db.usuarios.some((u) => u.rol === "admin")) {
-        db.usuarios.push(adminInicial());
-        await this.guardar("usuarios", db.usuarios);
-      }
-      return db;
-    } catch (e) {
-      console.error("Supabase leer error, usando fallback local:", e);
-      return new StoreArchivo().leer();
+    for (;;) {
+      const { data, error } = await this.sb.from(TABLA).select("coleccion,data").order("coleccion").order("id").range(desde, desde + 999);
+      if (error) throw new Error(`Supabase: ${error.message}`);
+      for (const fila of data ?? []) (db[fila.coleccion as Coleccion] as unknown[])?.push(fila.data);
+      if (!data || data.length < 1000) break;
+      desde += 1000;
     }
+    if (!db.usuarios.length && !db.countries.length) {
+      const inicial = datosEjemplo();
+      await this.reiniciar(inicial);
+      return inicial;
+    }
+    if (!db.usuarios.some((u) => u.rol === "admin")) {
+      db.usuarios.push(adminInicial());
+      await this.guardar("usuarios", db.usuarios);
+    }
+    return db;
   }
 
   async guardar<C extends Coleccion>(coleccion: C, docs: DB[C]) {
     if (!docs.length) return;
     const filas = (docs as { id: string }[]).map((d) => ({ coleccion, id: d.id, data: d, updated_at: new Date().toISOString() }));
-    try {
-      for (let i = 0; i < filas.length; i += 500) {
-        const { error } = await this.sb.from(TABLA).upsert(filas.slice(i, i + 500));
-        if (error) throw new Error(`Supabase: ${error.message}`);
-      }
-    } catch (e) {
-      console.error("Supabase guardar error:", e);
-      await new StoreArchivo().guardar(coleccion, docs);
+    for (let i = 0; i < filas.length; i += 500) {
+      const { error } = await this.sb.from(TABLA).upsert(filas.slice(i, i + 500));
+      if (error) throw new Error(`Supabase: ${error.message}`);
     }
   }
 
   async borrar(coleccion: Coleccion, ids: string[]) {
     if (!ids.length) return;
-    try {
-      const { error } = await this.sb.from(TABLA).delete().eq("coleccion", coleccion).in("id", ids);
-      if (error) throw new Error(`Supabase: ${error.message}`);
-    } catch (e) {
-      console.error("Supabase borrar error:", e);
-      await new StoreArchivo().borrar(coleccion, ids);
-    }
+    const { error } = await this.sb.from(TABLA).delete().eq("coleccion", coleccion).in("id", ids);
+    if (error) throw new Error(`Supabase: ${error.message}`);
   }
 
   async reiniciar(db: DB) {
-    try {
-      const { error } = await this.sb.from(TABLA).delete().neq("coleccion", "");
-      if (error) throw new Error(`Supabase: ${error.message}`);
-      for (const c of COLECCIONES) await this.guardar(c, db[c]);
-    } catch (e) {
-      console.error("Supabase reiniciar error:", e);
-      await new StoreArchivo().reiniciar(db);
-    }
+    const { error } = await this.sb.from(TABLA).delete().neq("coleccion", "");
+    if (error) throw new Error(`Supabase: ${error.message}`);
+    for (const c of COLECCIONES) await this.guardar(c, db[c]);
   }
 }
 
