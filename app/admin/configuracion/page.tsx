@@ -6,15 +6,18 @@ import { Boton, campo, Campo, Modal, Tarjeta, td, th } from "@/components/ui";
 import { NOMBRE_GRAVEDAD, nombreProducto, PRODUCTOS } from "@/lib/catalogo";
 import type { Parametros as P, TipoFalla } from "@/lib/types";
 
-const CAMPOS: [keyof P, string, string, number][] = [
-  ["minutosPorFalla", "Tiempo por equipo (min)", "Por cada equipo con falla: reparación y manejo dentro del barrio.", 1],
-  ["recalculoMin", "Actualizar rutas cada (min)", "Con la jornada en curso, para tener en cuenta el tráfico.", 1],
-  ["umbralCambioMin", "Sugerir otro destino si ahorra (min)", "Evita cambiarle el destino al conductor por poco.", 1],
+const CAMPOS_COMBINADA: [keyof P, string, string, number][] = [
   ["pesoUrgencia", "Prioridad a lo urgente", "0 = solo importa la distancia · 1 = lo más grave primero.", 0.05],
   ["costoMinuto", "Peso del tiempo de manejo", "Más alto = recorridos más cortos.", 0.01],
   ["factorHoras", "Peso del tiempo sin funcionar", "Cuánto sube la prioridad por cada día caído.", 0.05],
   ["factorFacturacion", "Peso del tamaño del cliente", "Prioridad extra para los clientes de mayor abono.", 0.05],
   ["factorRotos", "Peso de equipos rotos en el barrio", "Prioridad extra si gran parte del parque está caído.", 0.05],
+];
+
+const CAMPOS_PLANIFICACION: [keyof P, string, string, number][] = [
+  ["minutosPorFalla", "Tiempo por equipo (min)", "Por cada equipo con falla: reparación y manejo dentro del barrio.", 1],
+  ["recalculoMin", "Actualizar rutas cada (min)", "Con la jornada en curso, para tener en cuenta el tráfico.", 1],
+  ["umbralCambioMin", "Sugerir otro destino si ahorra (min)", "Evita cambiarle el destino al conductor por poco.", 1],
   ["costoFijoCamioneta", "Costo de sacar una camioneta", "Usado al sugerir la distribución. 0 = salen todas.", 1],
 ];
 
@@ -45,7 +48,8 @@ export default function Configuracion() {
     if (guardando || aplicandoGravedad) return;
     setGuardando(true);
     try {
-      await accion({ accion: "parametros", parametros: p }, "Criterios guardados");
+      const parametrosCombinada = Object.fromEntries(CAMPOS_COMBINADA.map(([k]) => [k, p[k]]));
+      await accion({ accion: "parametros", parametros: parametrosCombinada }, "Criterios combinados guardados");
     } catch (err) {
       avisar(err instanceof Error ? err.message : "Error");
     } finally {
@@ -72,9 +76,25 @@ export default function Configuracion() {
         {guardando ? "Guardando…" : "Guardar cambios"}
       </Boton>} />
       <div className="grid gap-5 xl:grid-cols-2">
+        <Tarjeta titulo="Parámetros para la optimización combinada">
+          <div className="grid gap-4 p-5 sm:grid-cols-2">
+            {CAMPOS_COMBINADA.map(([k, titulo, ayuda, paso]) => (
+              <Campo key={k} etiqueta={titulo} ayuda={ayuda}>
+                <input type="number" step={paso} min={0} className={`${campo} tabular`} value={p[k] as number} onChange={(ev) => setP({ ...p, [k]: Number(ev.target.value) })} />
+              </Campo>
+            ))}
+          </div>
+          <div className="flex justify-end border-t border-linea p-5">
+            <Boton variante="secundario" onClick={guardarCriterios} disabled={guardando || aplicandoGravedad}>
+              {guardando && <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" />}
+              {guardando ? "Guardando…" : "Guardar criterios"}
+            </Boton>
+          </div>
+        </Tarjeta>
+
         <Tarjeta titulo="Parámetros de ruteo y planificación">
           <div className="grid gap-4 p-5 sm:grid-cols-2">
-            {CAMPOS.map(([k, titulo, ayuda, paso]) => (
+            {CAMPOS_PLANIFICACION.map(([k, titulo, ayuda, paso]) => (
               <Campo key={k} etiqueta={titulo} ayuda={ayuda}>
                 <input type="number" step={paso} min={0} className={`${campo} tabular`} value={p[k] as number} onChange={(ev) => setP({ ...p, [k]: Number(ev.target.value) })} />
               </Campo>
@@ -85,12 +105,6 @@ export default function Configuracion() {
                 <option value="google">Google Maps</option>
               </select>
             </Campo>
-          </div>
-          <div className="flex justify-end border-t border-linea p-5">
-            <Boton variante="secundario" onClick={guardarCriterios} disabled={guardando || aplicandoGravedad}>
-              {guardando && <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" />}
-              {guardando ? "Guardando…" : "Guardar criterios"}
-            </Boton>
           </div>
         </Tarjeta>
 
