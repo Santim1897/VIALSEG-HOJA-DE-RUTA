@@ -150,7 +150,7 @@ class StoreArchivo implements Store {
 
 // Configuración predeterminada de Supabase para Vialseg (Base de datos propia en la nube)
 const DEFAULT_SUPABASE_URL = "https://xjgliotwjjsrduwfybya.supabase.co";
-const DEFAULT_SUPABASE_KEY = "sb_secret_4DLwjx5QPsmKyjqncIEM5w_RnwnZ9cn";
+const DEFAULT_SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqZ2xpb3R3ampzcmR1d2Z5YnlhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTU0OTc1MiwiZXhwIjoyMTA3MTI1NzUyfQ.xNRP9WUEa703NbebBL9wD-cEUBH9wbcysBch_0tBp_Y";
 
 let instancia: Store | null = null;
 export function store(): Store {
