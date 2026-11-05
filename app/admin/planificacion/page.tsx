@@ -237,7 +237,7 @@ export default function Planificacion() {
         >
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
-              <thead className="bg-fondo"><tr><th className={th}>Country</th><th className={th}>Fallas</th><th className={th}>Gravedad</th><th className={th}>Caído hace</th><th className={th}>Prioridad</th><th className={th}>Camioneta</th></tr></thead>
+              <thead className="bg-fondo"><tr><th className={th}>Country</th><th className={th}>Fallas</th><th className={th}>Gravedad</th><th className={th}>Caído hace</th><th className={th}>Camioneta</th></tr></thead>
               <tbody className="divide-y divide-linea">
                 {filas.map((c) => {
                   const val = e.valoraciones[c.id];
@@ -249,7 +249,7 @@ export default function Planificacion() {
                       <td className={`${td} tabular`}>{val?.fallas.length ?? 0}<span className="text-xs text-gris"> / {val?.equipos} equipos</span></td>
                       <td className={td}><Gravedad valor={val?.gravedadMax ?? 0} /></td>
                       <td className={`${td} tabular text-gris`}>{val?.horasMax ? duracion(val.horasMax) : "—"}</td>
-                      <td className={`${td} tabular font-semibold`}>{val?.premio.toFixed(1)}</td>
+                      
                       <td className={td}>
                         <select className="h-9 rounded-lg border border-linea bg-white px-2 text-sm" value={cam} disabled={fijo} onChange={(ev) => mover(c.id, ev.target.value)}
                           style={{ borderLeft: `4px solid ${e.camionetas.find((k) => k.id === cam)?.color ?? "#e3e8ef"}` }}>
