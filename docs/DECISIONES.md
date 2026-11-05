@@ -74,3 +74,10 @@ Horarios y autorizaciones de proveedores en cada barrio; repuestos y habilidades
 - Supabase Storage para las fotos (hoy van comprimidas dentro del registro).
 - GPS real de cada equipo y acceso; facturación real por cliente.
 - Validar con Vialseg las gravedades del catálogo y los tiempos de servicio.
+
+
+## 2026-11-04 · Sin fallback a archivo si Supabase falla
+
+| # | Decisión | Motivo |
+|---|---|---|
+| 40 | Cuando Supabase está configurado, los errores de lectura y escritura se devuelven como errores de la operación; no se cambia silenciosamente al archivo local de Vercel. El archivo JSON queda reservado para desarrollo sin Supabase | Evitar que un fallo temporal o de permisos muestre o guarde datos de ejemplo en un almacenamiento temporal y no persistente |

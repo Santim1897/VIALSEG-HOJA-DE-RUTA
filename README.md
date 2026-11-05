@@ -76,7 +76,7 @@ Navegador (Next.js / React)            Servidor (Next.js, rutas /api)           
 | Camionetas, bases, horarios | `seed.ts` | Carga en administración |
 | Tiempos de viaje | OSRM (sin tráfico) | Google Routes con `GOOGLE_MAPS_API_KEY` |
 
-Todo pasa por `lib/store.ts`: para conectar Vialseg se agrega un importador que escriba fallas con `origen: "vialseg"`; el resto del sistema no cambia.
+Todo pasa por `lib/store.ts`: para conectar Vialseg se agrega un importador que escriba fallas con `origen: "vialseg"`; el resto del sistema no cambia. En producción, los fallos de Supabase se informan como error y nunca se reemplaza la base por el archivo temporal de Vercel; el archivo local solo se usa cuando no hay conexión a Supabase configurada.
 
 ## Ejecutar localmente
 
