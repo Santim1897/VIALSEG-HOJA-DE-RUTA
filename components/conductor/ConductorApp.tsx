@@ -503,7 +503,7 @@ function PestanaRuta({ estado }: { estado: Estado }) {
               🏁
             </span>
             <span className="flex-1 text-slate-200">
-              Regreso al domicilio ({destinoFinal.nombre})
+              Regreso al domicilio ({plan?.retornoBase?.nombre ?? SEDE.nombre})
               <span className="block text-xs text-slate-400">
                 Fin de jornada · {plan.retornoBase.km} km · ~{Math.round(plan.retornoBase.minutos)} min de viaje
               </span>
