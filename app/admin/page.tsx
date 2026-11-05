@@ -164,7 +164,7 @@ export default function EnVivo() {
                         {j.forzado === proxima.countryId && <span className="ml-1 text-xs font-semibold text-amber-700">(forzado)</span>}
                       </p>
                     ) : (
-                      <p className="text-gris">{j.estado === "pendiente" ? "Espera que el conductor inicie la jornada" : plan ? "Sin visitas pendientes" : "Sin ruta calculada"}</p>
+                      <p className="text-gris">{j.estado === "pendiente" ? "Espera que el conductor inicie la jornada" : j.estado === "finalizada" ? "Jornada finalizada" : plan ? "Sin visitas pendientes" : "Sin ruta calculada"}</p>
                     )}
                     {plan && (
                       <p className="tabular mt-0.5 text-xs text-gris">

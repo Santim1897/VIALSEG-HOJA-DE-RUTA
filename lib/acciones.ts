@@ -194,14 +194,35 @@ export async function accionAdmin(origin: string, actor: Usuario, cuerpo: Record
         const criterios: CriterioRuteo[] = ["combinado", "facturacion", "equipos_rotos", "espera", "gravedad", "combustible"];
         const criterioRuteo = p.criterioRuteo ?? actual.criterioRuteo ?? "combinado";
         if (!criterios.includes(criterioRuteo)) falla("Criterio de recorrido inválido");
+        const countriesIguales = actual.countries.length === p.countries.length && actual.countries.every((id) => p.countries.includes(id));
+        const criterioIgual = criterioRuteo === (actual.criterioRuteo ?? "combinado");
+        const conductorIgual = (actual.conductorId ?? null) === (p.conductorId ?? null);
         if (actual.estado === "activa") {
-          if ((actual.conductorId ?? null) !== (p.conductorId ?? null)) falla(`${cam.nombre} ya inició la jornada: no se puede cambiar el conductor`);
-          const countriesIguales = actual.countries.length === p.countries.length && actual.countries.every((id) => p.countries.includes(id));
-          if (!countriesIguales || criterioRuteo !== (actual.criterioRuteo ?? "combinado")) {
+          if (!conductorIgual) falla(`${cam.nombre} ya inició la jornada: no se puede cambiar el conductor`);
+          if (!countriesIguales || !criterioIgual) {
             falla(`${cam.nombre} ya inició la jornada: no se pueden cambiar la distribución ni el objetivo hasta la próxima jornada`);
           }
         }
-        jornadas.push({ ...actual, heredado: false, conductorId: p.conductorId, criterioRuteo, countries: p.countries, forzado: p.countries.includes(actual.forzado ?? "") ? actual.forzado : null });
+        // Si se modifica una jornada finalizada, el plan nuevo es una jornada pendiente:
+        // no debe heredar visitas, posición ni el recorrido calculado de la prueba anterior.
+        const reiniciarFinalizada = actual.estado === "finalizada" && (!conductorIgual || !countriesIguales || !criterioIgual);
+        const base = reiniciarFinalizada ? {
+          ...actual,
+          estado: "pendiente" as const,
+          visitados: [],
+          salteados: [],
+          posicion: undefined,
+          destinoFijo: null,
+          enSitio: null,
+          forzado: null,
+          planId: undefined,
+          ultimoCalculo: undefined,
+          iniciadaAt: undefined,
+          finalizadaAt: undefined,
+          deshacer: null,
+          matriz: undefined,
+        } : actual;
+        jornadas.push({ ...base, heredado: false, conductorId: p.conductorId, criterioRuteo, countries: p.countries, forzado: p.countries.includes(base.forzado ?? "") ? base.forzado : null });
       }
       await s.guardar("jornadas", jornadas);
       await registrar("plan_dia", { detalle: String(cuerpo.resumen ?? `Plan del ${fecha} actualizado`) });
@@ -403,7 +424,9 @@ export async function estadoAdmin(fechaPlan?: string) {
   const jornadas = camionetas.map((c) => jornadaDe(db, c.id, fecha)).map(({ matriz: _m, ...j }) => j);
   const fechaP = fechaPlan && fechaPlan >= fecha ? fechaPlan : fecha;
   const jornadasPlan = camionetas.map((c) => jornadaDe(db, c.id, fechaP)).map(({ matriz: _m, ...j }) => j);
-  const vigentes = jornadas.map((j) => db.planes.find((pl) => pl.id === j.planId)).filter((x) => !!x);
+  // En vivo muestra solo rutas de jornadas activas. Una jornada finalizada puede
+  // conservar su último plan para historial, pero no cuenta como recorrido vigente.
+  const vigentes = jornadas.filter((j) => j.estado === "activa").map((j) => db.planes.find((pl) => pl.id === j.planId)).filter((x) => !!x);
   const abiertas = db.fallas.filter((f) => f.estado === "abierta");
   const resueltas = db.fallas.filter((f) => f.estado === "resuelta" && f.cerradaAt);
   const asignados = new Set(jornadas.flatMap((j) => j.countries));
