@@ -72,7 +72,7 @@ export default function Configuracion() {
         {guardando ? "Guardando…" : "Guardar cambios"}
       </Boton>} />
       <div className="grid gap-5 xl:grid-cols-2">
-        <Tarjeta titulo="Criterios de ruteo">
+        <Tarjeta titulo="Parámetros de ruteo y planificación">
           <div className="grid gap-4 p-5 sm:grid-cols-2">
             {CAMPOS.map(([k, titulo, ayuda, paso]) => (
               <Campo key={k} etiqueta={titulo} ayuda={ayuda}>
