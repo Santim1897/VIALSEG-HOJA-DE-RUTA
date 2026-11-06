@@ -280,7 +280,8 @@ export async function sugerirAsignacion(
       })),
       tiempos: m.min.map((fila) => fila.map((min) => Math.round(min * 10) / 10)),
       distancias: m.km.map((fila) => fila.map((km) => Math.round(km * 10) / 10)),
-      disponible: aMinutos(cam.fin) - aMinutos(cam.inicio),
+      // Se reserva 20% de margen: la duración estimada debe caber en el 83,3% del turno.
+      disponible: (aMinutos(cam.fin) - aMinutos(cam.inicio)) / 1.2,
     });
     todoOptimo &&= r.estado === "OPTIMO";
     segundos += r.segundos;
