@@ -133,8 +133,6 @@ export async function planificar(origin: string, camionetaId: string, motivo: Mo
     tiempos: m.min.map((f) => f.map((v) => Math.round(v * 10) / 10)),
     distancias: m.km.map((f) => f.map((v) => Math.round(v * 10) / 10)),
     disponible: disponible(cam.inicio, cam.fin),
-    peso_urgencia: criterioRuteo === "combinado" ? p.pesoUrgencia : 0,
-    costo_minuto: criterioRuteo === "combinado" ? p.costoMinuto : 0,
   };
 
   let motor = "";
@@ -283,8 +281,6 @@ export async function sugerirAsignacion(
       tiempos: m.min.map((fila) => fila.map((min) => Math.round(min * 10) / 10)),
       distancias: m.km.map((fila) => fila.map((km) => Math.round(km * 10) / 10)),
       disponible: aMinutos(cam.fin) - aMinutos(cam.inicio),
-      peso_urgencia: 0,
-      costo_minuto: 0,
     });
     todoOptimo &&= r.estado === "OPTIMO";
     segundos += r.segundos;

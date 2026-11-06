@@ -37,15 +37,17 @@ export const TIPOS_FALLA: TipoFalla[] = [
 
 export const PARAMETROS_INICIALES: Parametros = {
   id: "general",
-  pesoUrgencia: 0.5,
-  costoMinuto: 0.05,
+  pesoUrgencia: 1,
+  costoMinuto: 0,
+
   costoFijoCamioneta: 0,
   minutosPorFalla: 20,
   recalculoMin: 10,
   umbralCambioMin: 10,
-  factorHoras: 0.25,
-  factorFacturacion: 0.3,
-  factorRotos: 0.5,
+  factorHoras: 1,
+  factorFacturacion: 1,
+  factorRotos: 1,
+  factorGravedad: 1,
   navegador: "waze",
 };
 
