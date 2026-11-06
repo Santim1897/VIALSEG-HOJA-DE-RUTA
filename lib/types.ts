@@ -209,15 +209,14 @@ export interface Cierre {
 
 export interface Parametros {
   id: "general";
-  pesoUrgencia: number; // 0-1: cuánto castiga atender tarde lo urgente
-  costoMinuto: number; // costo por minuto de manejo, en puntos de premio
   costoFijoCamioneta: number; // para el modelo de asignación
   minutosPorFalla: number; // por equipo con falla: trabajo + manejo dentro del barrio
   recalculoMin: number;
   umbralCambioMin: number;
-  factorHoras: number; // +X por cada 24 h caído
+  factorHoras: number; // factor del porcentaje medio de días caídos sobre 7
   factorFacturacion: number;
   factorRotos: number;
+  factorGravedad: number;
   navegador: "waze" | "google";
 }
 
