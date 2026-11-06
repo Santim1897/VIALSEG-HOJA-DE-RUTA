@@ -163,9 +163,6 @@ export default function Configuracion() {
             </table>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-4 border-t border-linea p-5">
-            <p className="max-w-2xl text-sm text-gris">
-              Al aplicar, las fallas abiertas tomarán la gravedad configurada para su tipo. Esto reemplaza cualquier gravedad ajustada individualmente en esas fallas; las fallas resueltas no cambian.
-            </p>
             <Boton variante="secundario" onClick={aplicarGravedad} disabled={guardando || aplicandoGravedad}>
               {aplicandoGravedad && <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" />}
               {aplicandoGravedad ? "Aplicando…" : "Aplicar gravedad a fallas abiertas"}
