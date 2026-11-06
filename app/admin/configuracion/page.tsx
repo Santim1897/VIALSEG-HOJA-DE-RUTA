@@ -101,6 +101,10 @@ export default function Configuracion() {
       </Boton>} />
       <div className="grid gap-5 xl:grid-cols-2">
         <Tarjeta titulo="Parámetros para la optimización combinada">
+          <div className="border-b border-linea px-5 pt-4 pb-3 text-sm text-gris">
+            <p><span className="font-semibold text-tinta">Puntaje combinado =</span> (% facturación × factor) + (% tiempo sin funcionar × factor) + (% equipos rotos × factor) + (% gravedad × factor).</p>
+            <p className="mt-1">Si los cuatro factores son iguales, cada criterio tiene el mismo peso máximo; el aporte concreto depende del porcentaje de cada country.</p>
+          </div>
           <div className="grid gap-4 p-5 sm:grid-cols-2">
             {CAMPOS_COMBINADA.map(([k, titulo, ayuda, paso]) => (
               <Campo key={k} etiqueta={titulo} ayuda={ayudaPonderador(k, ayuda, p)}>
