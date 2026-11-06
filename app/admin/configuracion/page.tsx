@@ -7,20 +7,18 @@ import { NOMBRE_GRAVEDAD, nombreProducto, PRODUCTOS } from "@/lib/catalogo";
 import type { Parametros as P, TipoFalla } from "@/lib/types";
 
 const CAMPOS_COMBINADA: [keyof P, string, string, number][] = [
-  ["pesoUrgencia", "Prioridad a lo urgente", "0 = solo importa la distancia · 1 = lo más grave primero.", 0.05],
-  ["costoMinuto", "Peso del tiempo de manejo", "Más alto = recorridos más cortos.", 0.01],
-  ["factorHoras", "Peso del tiempo sin funcionar", "Cuánto sube la prioridad por cada día caído.", 0.05],
-  ["factorFacturacion", "Peso del tamaño del cliente", "Prioridad extra para los clientes de mayor abono.", 0.05],
-  ["factorRotos", "Peso de equipos rotos en el barrio", "Prioridad extra si gran parte del parque está caído.", 0.05],
+  ["factorFacturacion", "Peso de facturación del country", "Porcentaje de facturación relativa al mayor country disponible.", 0.05],
+  ["factorHoras", "Peso del tiempo sin funcionar", "Promedio de días de falla sobre 7, con tope de 100%.", 0.05],
+  ["factorRotos", "Peso de cantidad de equipos rotos", "Porcentaje respecto del country con más equipos rotos.", 0.05],
+  ["factorGravedad", "Peso de gravedad de fallas", "Porcentaje de gravedad acumulada respecto del máximo disponible.", 0.05],
 ];
 
 function ayudaPonderador(k: keyof P, ayuda: string, p: P) {
   const formato = (valor: number) => new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 }).format(valor);
-  if (k === "factorHoras") return `${ayuda} (+${formato(p.factorHoras * 100)}%).`;
-  if (k === "factorFacturacion") return `${ayuda} (hasta +${formato(p.factorFacturacion * 100)}%).`;
-  if (k === "factorRotos") return `${ayuda} (hasta +${formato(p.factorRotos * 100)}%).`;
-  if (k === "pesoUrgencia") return `${ayuda} (peso actual: ${formato(p.pesoUrgencia)}).`;
-  if (k === "costoMinuto") return `${ayuda} (+${formato(p.costoMinuto)} puntos por minuto).`;
+  if (k === "factorHoras") return `${ayuda} (peso: ${formato(p.factorHoras)}).`;
+  if (k === "factorFacturacion") return `${ayuda} (peso: ${formato(p.factorFacturacion)}).`;
+  if (k === "factorRotos") return `${ayuda} (peso: ${formato(p.factorRotos)}).`;
+  if (k === "factorGravedad") return `${ayuda} (peso: ${formato(p.factorGravedad)}).`;
   return ayuda;
 }
 
