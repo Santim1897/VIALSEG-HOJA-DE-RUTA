@@ -94,12 +94,9 @@ def resolver_pli(datos: dict) -> dict:
     if criterio == "combustible":
         solver.Maximize(recompensa - sum(float(km[i][j]) * x[i, j] for i, j in arcos))
     elif criterio == "combinado":
-        solver.Maximize(
-            recompensa
-            - u * sum((p[j] / T) * t[j] for j in v)
-            - c * sum(d[i][j] * x[i, j] for i, j in arcos)
-            - 1e-4 * t[fin]
-        )
+        # El puntaje combinado decide qué barrios se visitan; el tiempo solo
+        # limita factibilidad de jornada y ya no resta puntos al objetivo.
+        solver.Maximize(recompensa)
     else:
         # Los criterios individuales no mezclan facturación, cantidad, antigüedad o gravedad.
         solver.Maximize(recompensa)
@@ -163,7 +160,7 @@ def resolver_pd(datos: dict) -> dict:
         if criterio == "combustible":
             valor_final = valor - km[ultimo][fin]
         elif criterio == "combinado":
-            valor_final = valor - c * d[ultimo][fin] - 1e-4 * t_fin
+            valor_final = valor
         else:
             valor_final = valor
         return valor_final, t_fin
@@ -187,7 +184,7 @@ def resolver_pd(datos: dict) -> dict:
                     if criterio == "combustible":
                         valor_j = valor_actual + p[j] - km[ult][j]
                     elif criterio == "combinado":
-                        valor_j = valor_actual + p[j] * (1 - u * t_j / T) - c * d[ult][j]
+                        valor_j = valor_actual + p[j]
                     else:
                         valor_j = valor_actual + p[j]
                     lista = siguientes.setdefault((mask | (1 << j), j), [])
