@@ -209,6 +209,8 @@ export interface Cierre {
 
 export interface Parametros {
   id: "general";
+  pesoUrgencia: number; // peso urgencia en criterio combinado
+  costoMinuto: number; // costo por minuto de manejo en criterio combinado
   costoFijoCamioneta: number; // para el modelo de asignación
   minutosPorFalla: number; // por equipo con falla: trabajo + manejo dentro del barrio
   recalculoMin: number;
