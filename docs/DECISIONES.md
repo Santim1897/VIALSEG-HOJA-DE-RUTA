@@ -2,6 +2,13 @@
 
 Qué se decidió, por qué y qué queda pendiente. Agregar una entrada por cada decisión nueva (la más reciente arriba).
 
+## 2026-11-08 · Desempate por kilómetros
+
+| # | Decisión | Motivo |
+|---|---|---|
+| 41 | En el combinado y en los criterios individuales (facturación, equipos rotos, antigüedad, gravedad), entre recorridos con el mismo puntaje se elige el de menos km, incluido el regreso al domicilio. Se implementa restando ε × km al objetivo, con ε = 0,0001 / ((n+1) × tramo más largo + 1): ningún recorrido puede restar 0,0001 puntos, así que los km nunca cambian qué barrios se eligen. Se pide gap relativo 0 a la PLE para que no corte antes del desempate | Sin desempate, la programación dinámica devolvía órdenes con zigzags: en 110 de 200 casos al azar con igual puntaje el recorrido era más largo que el mínimo |
+| 42 | Pendiente para la puesta en marcha: reemplazar ε por un costo por km calibrado con la dirección de Vialseg (por ejemplo, "¿cuántos km extra se justifican para el barrio más crítico?"), para que también se resignen diferencias chicas de puntaje cuando implican muchos km más | Calibrar ese valor requiere iterar con la empresa; no se hizo para la entrega del TP |
+
 ## 2026-11-04 · Reinicio de jornada finalizada al cambiar el plan
 
 | # | Decisión | Motivo |
