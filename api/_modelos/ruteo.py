@@ -16,8 +16,11 @@ Variables
     t[j]   ≥ 0      minuto (desde ahora) en que llega a j
 
 Objetivo (maximizar)
-    Σ p_j·v_j  −  u · Σ (p_j / T)·t_j  −  c · Σ d_ij·x_ij
-    premio de lo atendido − castigo por atender tarde lo urgente − costo del manejo
+    combinado y criterios individuales:  Σ p_j·v_j  −  ε · Σ km_ij·x_ij
+        puntaje atendido; ε es tan chico que los km solo desempatan recorridos
+        con el mismo puntaje (se elige el de menos km, incluido el regreso)
+    combustible:  Σ P·v_j  −  Σ km_ij·x_ij
+        P supera cualquier diferencia de km: primero más barrios, después menos km
 
 Restricciones
     Σ_j x[0,j] = 1                    sale una vez de la posición actual
@@ -32,6 +35,16 @@ from __future__ import annotations
 from time import perf_counter
 
 from ortools.linear_solver import pywraplp
+
+# Diferencia mínima de puntaje que se considera real (los puntajes llegan redondeados a 4 decimales).
+DIFERENCIA_MINIMA_PUNTAJE = 1e-4
+
+
+def peso_desempate_km(km: list, n: int) -> float:
+    """ε por km: el recorrido más largo posible ((n+1) tramos máximos) resta menos que la
+    diferencia mínima de puntaje, así que los km nunca cambian qué barrios se eligen."""
+    max_arco_km = max((float(v) for fila in km for v in fila), default=0.0)
+    return DIFERENCIA_MINIMA_PUNTAJE / ((n + 1) * max_arco_km + 1.0)
 
 
 def resolver_pli(datos: dict) -> dict:
@@ -91,17 +104,19 @@ def resolver_pli(datos: dict) -> dict:
             solver.Add(x[0, ids.index(fijo) + 1] == 1)
 
     recompensa = sum(p[j] * v[j] for j in v)
+    manejo_km = sum(float(km[i][j]) * x[i, j] for i, j in arcos)
     if criterio == "combustible":
-        solver.Maximize(recompensa - sum(float(km[i][j]) * x[i, j] for i, j in arcos))
-    elif criterio == "combinado":
-        # El puntaje combinado decide qué barrios se visitan; el tiempo solo
-        # limita factibilidad de jornada y ya no resta puntos al objetivo.
-        solver.Maximize(recompensa)
+        solver.Maximize(recompensa - manejo_km)
     else:
-        # Los criterios individuales no mezclan facturación, cantidad, antigüedad o gravedad.
-        solver.Maximize(recompensa)
+        # El puntaje (combinado o individual) decide qué barrios se visitan; el tiempo limita
+        # la jornada y los km solo desempatan recorridos con el mismo puntaje.
+        solver.Maximize(recompensa - peso_desempate_km(km, n) * manejo_km)
 
-    estado = solver.Solve()
+    # Con el gap relativo por defecto (1e-4) el solver da por óptima una solución que no
+    # respeta el desempate por km; se exige el óptimo exacto (sujeto al límite de tiempo).
+    parametros = pywraplp.MPSolverParameters()
+    parametros.SetDoubleParam(parametros.RELATIVE_MIP_GAP, 0.0)
+    estado = solver.Solve(parametros)
     segundos = round(perf_counter() - inicio, 3)
     if estado not in (pywraplp.Solver.OPTIMAL, pywraplp.Solver.FEASIBLE):
         return {"estado": "SIN_SOLUCION", "orden": [], "llegadas": {}, "segundos": segundos,
@@ -118,7 +133,8 @@ def resolver_pli(datos: dict) -> dict:
         "orden": [nodos[k - 1]["id"] for k in orden],
         "llegadas": {nodos[k - 1]["id"]: round(t[k].solution_value(), 1) for k in orden},
         "no_visitados": [nodos[k - 1]["id"] for k in range(1, n + 1) if k not in visitados],
-        "objetivo": round(solver.Objective().Value(), 3),
+        "objetivo": round(solver.Objective().Value() if criterio == "combustible"
+                          else sum(p[k] for k in orden), 3),
         "minutos_totales": round(t[fin].solution_value(), 1),
         "segundos": segundos,
         "metodo": "PLE (OR-Tools + SCIP)",
@@ -147,6 +163,8 @@ def resolver_pd(datos: dict) -> dict:
         p = [0.0] + [premio_barrio] * n
     else:
         p = [0.0] + [float(x["premio"]) for x in nodos]
+    # Costo por km: real en combustible; ε de desempate en el resto de los criterios.
+    costo_km = 1.0 if criterio == "combustible" else peso_desempate_km(km, n)
     k_fijo = ids.index(fijo) + 1 if fijo in ids else None
 
     # etiqueta = (llegada al último, objetivo acumulado, último, máscara, etiqueta anterior)
@@ -157,13 +175,7 @@ def resolver_pd(datos: dict) -> dict:
     def cerrar(et):
         tiempo, valor, ultimo, _, _ = et
         t_fin = tiempo + s[ultimo] + d[ultimo][fin]
-        if criterio == "combustible":
-            valor_final = valor - km[ultimo][fin]
-        elif criterio == "combinado":
-            valor_final = valor
-        else:
-            valor_final = valor
-        return valor_final, t_fin
+        return valor - costo_km * km[ultimo][fin], t_fin
 
     while capas:
         siguientes: dict = {}
@@ -181,16 +193,13 @@ def resolver_pd(datos: dict) -> dict:
                     t_j = t_actual + s[ult] + d[ult][j]
                     if t_j + s[j] + d[j][fin] > T + 1e-9:
                         continue
-                    if criterio == "combustible":
-                        valor_j = valor_actual + p[j] - km[ult][j]
-                    elif criterio == "combinado":
-                        valor_j = valor_actual + p[j]
-                    else:
-                        valor_j = valor_actual + p[j]
+                    valor_j = valor_actual + p[j] - costo_km * km[ult][j]
+                    # Se descarta solo lo dominado: llega más tarde y vale lo mismo o menos
+                    # (el valor ya incluye los km, así que se conserva el más rápido y el más corto).
                     lista = siguientes.setdefault((mask | (1 << j), j), [])
-                    if any(o[0] <= t_j + 1e-9 and o[1] >= valor_j - 1e-9 for o in lista):
+                    if any(o[0] <= t_j + 1e-9 and o[1] >= valor_j - 1e-12 for o in lista):
                         continue
-                    lista[:] = [o for o in lista if not (t_j <= o[0] + 1e-9 and valor_j >= o[1] - 1e-9)]
+                    lista[:] = [o for o in lista if not (t_j <= o[0] + 1e-9 and valor_j >= o[1] - 1e-12)]
                     lista.append((t_j, valor_j, j, mask | (1 << j), et))
         capas = siguientes
 
@@ -201,7 +210,13 @@ def resolver_pd(datos: dict) -> dict:
         et = et[4]
     orden.reverse()
     _, t_fin = cerrar(mejor) if mejor else (0, 0)
-    objetivo = round(mejor_valor + 1e-4 * t_fin, 3) if mejor and criterio == "combinado" else round(mejor_valor, 3) if mejor else 0.0
+    if not mejor:
+        objetivo = 0.0
+    elif criterio == "combustible":
+        objetivo = round(mejor_valor, 3)
+    else:
+        # Se informa el puntaje atendido, sin el ε de desempate.
+        objetivo = round(sum(p[k] for k in orden), 3)
     return {
         "estado": "OPTIMO" if mejor else "SIN_SOLUCION",
         "orden": [ids[k - 1] for k in orden],

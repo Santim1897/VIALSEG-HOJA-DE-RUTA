@@ -44,10 +44,11 @@ Nodos: 0 = domicilio del conductor al iniciar o posición actual conocida al rec
 **Objetivo:**
 
 ```
-max  Σⱼ pⱼ·vⱼ  −  u · Σⱼ (pⱼ / T)·tⱼ  −  c · Σᵢⱼ dᵢⱼ·xᵢⱼ
+combinado y criterios individuales:   max  Σⱼ pⱼ·vⱼ  −  ε · Σᵢⱼ kmᵢⱼ·xᵢⱼ
+combustible:                          max  Σⱼ P·vⱼ   −      Σᵢⱼ kmᵢⱼ·xᵢⱼ
 ```
 
-premio de lo atendido − castigo por atender tarde lo urgente (u = 0,5) − costo del manejo (c = 0,05 por minuto).
+pⱼ es el puntaje del criterio elegido. El tiempo de manejo solo limita la jornada (restricciones). ε = 0,0001 / ((n+1) × tramo más largo + 1) es tan chico que los km solo desempatan: entre recorridos con el mismo puntaje se elige el de menos km, incluido el regreso. En combustible, P = (n+1) × tramo más largo + 1 hace que un barrio más siempre gane a cualquier ahorro de km.
 
 **Restricciones:**
 
