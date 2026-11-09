@@ -2,7 +2,7 @@
 
 Sistema que le indica a cada conductor de Vialseg **a qué country ir después**, por cálculo y no por experiencia, y le da a la administración una vista de todas las camionetas. Cada camioneta sale desde donde está (GPS); la sede de Vialseg (Martín Lezica 3093, San Isidro) se muestra siempre en el mapa. Proyecto de consultoría de la materia Supply Chain (ITBA), unidad *Redes de Distribución*.
 
-> Rama `v2/base-nueva`: reescritura completa. El prototipo anterior (un solo `app.py`) quedó en [`legacy/`](legacy/) como referencia. Hasta recibir los datos reales de Vialseg, el sistema arranca con datos de ejemplo (countries, equipos, fallas y conductores).
+> Rama `v2/base-nueva`: reescritura completa. El prototipo anterior (un solo `app.py`) quedó en [`legacy/`](legacy/) como referencia. Hasta recibir los datos reales de Vialseg, el sistema arranca con datos de ejemplo (122 barrios del conurbano con coordenadas aproximadas, equipos, fallas y conductores).
 
 ## Qué hace
 

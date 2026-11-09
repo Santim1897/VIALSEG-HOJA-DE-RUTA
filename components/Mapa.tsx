@@ -33,8 +33,11 @@ export default function Mapa({ datos, alto = 520 }: { datos: DatosMapa; alto?: n
   const abiertas = (id: string) => fallas.filter((f) => f.countryId === id && f.estado === "abierta");
 
   const tactil = window.matchMedia("(pointer: coarse)").matches;
+  // La vista inicial abarca todos los barrios activos (la cartera va de zona norte a zona sur).
+  const puntos = countries.filter((c) => c.activo !== false).map((c): [number, number] => [c.lat, c.lon]);
+  const vista = puntos.length > 1 ? { bounds: L.latLngBounds(puntos), boundsOptions: { padding: [20, 20] as [number, number] } } : { center: [-34.42, -58.74] as [number, number], zoom: tactil ? 10 : 11 };
   return (
-    <MapContainer center={[-34.42, -58.74]} zoom={tactil ? 10 : 11} scrollWheelZoom={!tactil} dragging={!tactil} touchZoom style={{ height: alto, width: "100%" }}>
+    <MapContainer {...vista} scrollWheelZoom={!tactil} dragging={!tactil} touchZoom style={{ height: alto, width: "100%" }}>
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"

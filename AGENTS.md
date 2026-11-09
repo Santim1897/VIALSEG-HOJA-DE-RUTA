@@ -4,7 +4,7 @@ Estas reglas aplican a cualquier persona o agente que modifique este repositorio
 
 ## Objetivo
 
-Sistema de ruteo de las camionetas de mantenimiento de Vialseg en barrios privados de Pilar y Zona Norte: vista de administración, vista de conductor y modelos de optimización. Ver `README.md`, `docs/MODELOS.md` y `docs/DECISIONES.md`.
+Sistema de ruteo de las camionetas de mantenimiento de Vialseg en barrios privados del conurbano bonaerense (zona norte, oeste y sur): vista de administración, vista de conductor y modelos de optimización. Ver `README.md`, `docs/MODELOS.md` y `docs/DECISIONES.md`.
 
 ## Reglas de colaboración
 

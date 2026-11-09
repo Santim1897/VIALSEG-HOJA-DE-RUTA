@@ -2,6 +2,12 @@
 
 Qué se decidió, por qué y qué queda pendiente. Agregar una entrada por cada decisión nueva (la más reciente arriba).
 
+## 2026-11-09 · Datos de ejemplo del tamaño de la cartera real
+
+| # | Decisión | Motivo |
+|---|---|---|
+| 43 | Los datos de ejemplo pasan de 24 a 122 barrios privados de zona norte, oeste y sur del conurbano (coordenadas aproximadas). Cada barrio tiene entre 2 y 4 módulos de abono (2 radares + 1 indicador de velocidad, $500.000 por mes cada módulo) y su facturación es módulos × abono. Alrededor de 1 de cada 5 barrios arranca con fallas abiertas. El mapa abre mostrando todos los barrios activos | Probar el sistema con el tamaño real de la cartera (unos 1.100 equipos, 9 por barrio) y con la facturación que informó Vialseg. La proporción de barrios con fallas mantiene una cantidad de candidatos por día similar a la anterior |
+
 ## 2026-11-08 · Desempate por kilómetros
 
 | # | Decisión | Motivo |
@@ -81,7 +87,7 @@ Horarios y autorizaciones de proveedores en cada barrio; repuestos y habilidades
 
 ### Pendiente para producción
 
-- **Lista real de countries donde opera Vialseg**: todavía no la tenemos (llega en unos días). Los 24 countries de `lib/seed.ts` (nombres, coordenadas, facturación y equipos) son inventados, igual que los del prototipo v1. Al recibirla: Configuración → Borrar datos operativos, y cargar countries y equipos desde el panel (o pedir una importación desde Excel).
+- **Lista real de countries donde opera Vialseg**: todavía no la tenemos. Los 122 barrios de `lib/seed.ts` son barrios privados del conurbano con coordenadas aproximadas; la cantidad, la facturación y los equipos son de ejemplo (ver decisión #43). Al recibirla: Configuración → Borrar datos operativos, y cargar countries y equipos desde el panel (o pedir una importación desde Excel).
 - Conectar la plataforma de Vialseg (importador de fallas, countries y equipos con `origen: "vialseg"`).
 - Clave de Google Routes para tráfico en vivo.
 - Supabase Storage para las fotos (hoy van comprimidas dentro del registro).
