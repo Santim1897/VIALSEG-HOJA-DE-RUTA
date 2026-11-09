@@ -6,6 +6,7 @@ Qué se decidió, por qué y qué queda pendiente. Agregar una entrada por cada 
 
 | # | Decisión | Motivo |
 |---|---|---|
+| 44 | Las fallas de ejemplo siguen una tasa de 1 falla cada 6 meses por equipo: se cargan las abiertas de los últimos 3 días (cada equipo con probabilidad 3/182 de estar roto, unas 15–17 fallas en ~13–15 barrios, con 1 a 72 h de antigüedad). Reemplaza la proporción fija de barrios con fallas de la #43 | Que el día de ejemplo sea coherente con la tasa de fallas y los plazos de resolución (24 a 72 h) usados en el informe: llegan ~6 fallas por día y cada una queda abierta 2 a 3 días |
 | 43 | Los datos de ejemplo pasan de 24 a 122 barrios privados de zona norte, oeste y sur del conurbano (coordenadas aproximadas). Cada barrio tiene entre 2 y 4 módulos de abono (2 radares + 1 indicador de velocidad, $500.000 por mes cada módulo) y su facturación es módulos × abono. Alrededor de 1 de cada 5 barrios arranca con fallas abiertas. El mapa abre mostrando todos los barrios activos | Probar el sistema con el tamaño real de la cartera (unos 1.100 equipos, 9 por barrio) y con la facturación que informó Vialseg. La proporción de barrios con fallas mantiene una cantidad de candidatos por día similar a la anterior |
 
 ## 2026-11-08 · Desempate por kilómetros
