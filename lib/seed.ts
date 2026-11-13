@@ -150,6 +150,9 @@ const UBICACIONES = ["Acceso principal", "Avenida central", "Rotonda norte", "Ca
 // Cada módulo de abono son 2 radares y 1 indicador de velocidad, a $500.000 por mes.
 const ABONO_MODULO = 500_000;
 const INDICADORES: ProductoId[] = ["tableta", "totem"];
+// Tasa de fallas: 1 cada 6 meses por equipo; se cargan las abiertas de los últimos 3 días (plazos de 24 a 72 h).
+const DIAS_ENTRE_FALLAS = 182;
+const DIAS_ACUMULADOS = 3;
 
 function generador(semilla: number) {
   return () => {
@@ -183,20 +186,17 @@ export function datosEjemplo(): DB {
     });
   });
 
-  // ~1 de cada 5 barrios con fallas abiertas (unos 25 de 122), entre 1 y 3 equipos rotos cada uno.
+  // Cada equipo falla en promedio 1 vez cada 6 meses y una falla tarda hasta 3 días en cerrarse:
+  // al cargar los datos, cada equipo tiene probabilidad 3/182 de estar roto (unas 17 fallas en ~15 barrios).
   const fallas: Falla[] = [];
-  for (const c of countries) {
-    if (azar() < 0.8) continue;
-    const propios = equipos.filter((e) => e.countryId === c.id);
-    const rotos = 1 + Math.floor(azar() * Math.min(3, propios.length));
-    for (const e of propios.slice(0, rotos)) {
-      const tipos = TIPOS_FALLA.filter((t) => t.producto === e.producto || (t.producto === "todos" && azar() < 0.1));
-      const tipo = elegir(tipos);
-      fallas.push({
-        id: `f${String(fallas.length + 1).padStart(3, "0")}`, equipoId: e.id, countryId: c.id, tipoId: tipo.id, gravedad: tipo.gravedad,
-        abiertaAt: new Date(ahora - (2 + azar() * 70) * 3600_000).toISOString(), estado: "abierta", origen: "ejemplo",
-      });
-    }
+  for (const e of equipos) {
+    if (azar() >= DIAS_ACUMULADOS / DIAS_ENTRE_FALLAS) continue;
+    const tipos = TIPOS_FALLA.filter((t) => t.producto === e.producto || (t.producto === "todos" && azar() < 0.1));
+    const tipo = elegir(tipos);
+    fallas.push({
+      id: `f${String(fallas.length + 1).padStart(3, "0")}`, equipoId: e.id, countryId: e.countryId, tipoId: tipo.id, gravedad: tipo.gravedad,
+      abiertaAt: new Date(ahora - (1 + azar() * (DIAS_ACUMULADOS * 24 - 1)) * 3600_000).toISOString(), estado: "abierta", origen: "ejemplo",
+    });
   }
 
   // Asignación inicial del día por zona (el administrador la puede cambiar o pedir la sugerencia del modelo).
