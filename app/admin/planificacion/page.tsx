@@ -13,7 +13,7 @@ const criterios: { id: CriterioRuteo; nombre: string }[] = [
   { id: "equipos_rotos", nombre: "Cantidad de equipos rotos" },
   { id: "espera", nombre: "Fallas más antiguas" },
   { id: "gravedad", nombre: "Gravedad de las fallas" },
-  { id: "combustible", nombre: "Combustible: más barrios, menos km" },
+  { id: "combustible", nombre: "Más barrios por salida" },
 ];
 interface Sugerencia { asignacion: Record<string, string[]>; sin_asignar: string[]; carga_minutos: Record<string, number> }
 
@@ -203,7 +203,7 @@ export default function Planificacion() {
                     Combinación de criterios con los ponderadores configurados en configuración.
                   </p>
                 )}
-                {v.criterioRuteo === "combustible" && <p className="text-xs text-gris">Primero busca incluir la mayor cantidad de barrios posible; luego minimiza los kilómetros, incluido el regreso a la base.</p>}
+                {v.criterioRuteo === "combustible" && <p className="text-xs text-gris">Sirve para dejar la mayor cantidad de barrios sin fallas en un día. Primero busca atender la mayor cantidad de barrios posible dentro de la jornada; entre las rutas con esa cantidad, elige la de menos kilómetros.</p>}
                 <p className="tabular text-xs text-gris">{v.countries.length} countries · {minutos} min de trabajo en sitio{sugerencia?.carga_minutos[c.id] ? ` · ~${Math.round(sugerencia.carga_minutos[c.id] / 6) / 10} h con manejo` : ""}</p>
                 <ul className="space-y-1">
                   {v.countries.length === 0 && <li className="text-sm text-gris">Sin countries asignados.</li>}
